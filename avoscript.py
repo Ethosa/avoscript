@@ -36,7 +36,6 @@ parser.set_defaults(
 )
 
 args = parser.parse_args()
-print(args)
 
 
 if args.version:

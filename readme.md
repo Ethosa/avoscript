@@ -125,4 +125,5 @@ flags
 - `import`
   ```
   import MODULE_NAME
+  some_function_from_module();
   ```

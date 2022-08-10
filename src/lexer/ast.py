@@ -5,10 +5,12 @@ from pprint import pprint
 
 from equality import AnyBase
 
-
 ENV = []
 ENV_CONSTS = []
 STATEMENT_LIST_LEVEL = -1
+MODULES = {
+    # module_name: statement_list_level
+}
 
 
 def has_variable(name: str) -> Tuple[bool, int, bool]:
@@ -17,7 +19,7 @@ def has_variable(name: str) -> Tuple[bool, int, bool]:
     :param name: var/const name
     :return: (contains, level index, is constant)
     """
-    for level in range(len(ENV)-1, -1, -1):
+    for level in range(len(ENV) - 1, -1, -1):
         if name in ENV[level]:
             return True, level, False
         elif name in ENV_CONSTS[level]:
@@ -121,7 +123,23 @@ class VarAST(ASTExpr):
         raise RuntimeError(f'{self.var_name} was used before assign')
 
 
+class ArgumentAST(ASTExpr):
+    """serves FuncStmt/CallStmt arguments"""
+
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+
+    def __repr__(self) -> str:
+        return f"ArgumentAST({self.name}, {self.value})"
+
+    def eval(self):
+        return self.name, self.value
+
+
 class BraceAST(ASTExpr):
+    """serves array[index]"""
+
     def __init__(self, obj, v):
         self.obj = obj
         self.v = v
@@ -181,14 +199,14 @@ class UnaryOpAST(ASTExpr):
                 if isinstance(self.expr, VarAST):
                     assign_stmt = AssignStmt(self.expr.var_name, binop)
                     assign_stmt.eval()
-                    return self.expr
+                    return self.expr.eval()
                 return binop.eval()
             case '--':
                 binop = BinOpAST('-', self.expr, IntAST(1))
                 if isinstance(self.expr, VarAST):
                     assign_stmt = AssignStmt(self.expr.var_name, binop)
                     assign_stmt.eval()
-                    return self.expr
+                    return self.expr.eval()
                 return binop.eval()
             case _:
                 raise RuntimeError(f"unknown unary operation: {self.op}")
@@ -253,6 +271,18 @@ class OrOp(BinOpExpr):
         return self.l.eval() or self.r.eval()
 
 
+class InOp(BinOpExpr):
+    def __init__(self, l, r):
+        self.l = l
+        self.r = r
+
+    def __repr__(self) -> str:
+        return f"InOp({self.l}, {self.r})"
+
+    def eval(self):
+        return self.l.eval() in self.r.eval()
+
+
 class NotOp(BinOpExpr):
     def __init__(self, expr):
         self.expr = expr
@@ -288,14 +318,11 @@ class StmtList(Stmt):
         # Arguments (if in function)
         if Signal.IN_FUNCTION and Signal.ARGUMENTS:
             for n, v in Signal.ARGUMENTS.items():
-                ENV[STATEMENT_LIST_LEVEL][n.value[0][0]] = v.value[0][1].eval()
+                ENV[STATEMENT_LIST_LEVEL][n.name] = v.value.eval()
             Signal.ARGUMENTS = None
         if Signal.IN_FUNCTION and Signal.KW_ARGUMENTS:
             for v in Signal.KW_ARGUMENTS:
-                if isinstance(v.value[0][1], tuple):
-                    ENV[STATEMENT_LIST_LEVEL][v.value[0][0]] = v.value[0][1][1].eval()
-                else:
-                    ENV[STATEMENT_LIST_LEVEL][v.value[0][0][0]] = v.value[0][1].eval()
+                ENV[STATEMENT_LIST_LEVEL][v.name] = v.value.eval()
             Signal.KW_ARGUMENTS = None
         # Statements
         for stmt in self.statements:
@@ -501,7 +528,7 @@ class EchoStmt(Stmt):
 class FuncStmt(Stmt):
     def __init__(self, name, args, body):
         self.name = name
-        self.args = args if args else []
+        self.args = args
         self.body = body
 
     def __repr__(self) -> str:
@@ -527,10 +554,10 @@ class CallStmt(Stmt):
         has_var, level, is_const = has_variable(self.name)
         if has_var and self.name in ENV[level]:
             f = ENV[level][self.name]
-            args = [i for i in self.args if i.value[0][0] is None]
-            fargs = [i for i in f[0] if i.value[0][1] is None]
-            kwargs = [i for i in self.args if not i.value[0][0] is None]
-            fkwargs = [i for i in f[0] if not i.value[0][1] is None]
+            args = [i for i in self.args if i.name is None]
+            fargs = [i for i in f[0] if i.value is None]
+            kwargs = [i for i in self.args if i.name is not None]
+            fkwargs = [i for i in f[0] if i.value is not None]
             if len(args) != len(fargs):
                 raise RuntimeError(
                     f"function {self.name} waited for {len(fargs)}, but got {len(args)} arguments"
@@ -562,19 +589,23 @@ class ReturnStmt(Stmt):
 
 class ImportStmt(Stmt):
     def __init__(self, module_name):
-        self.module_name = module_name + '.avo'
+        self.module_name = module_name
 
     def __repr__(self) -> str:
         return f"ImportStmt({self.module_name})"
 
     def eval(self):
         from src.lexer import stmt_list, lex
-        if not exists(self.module_name) or not isfile(self.module_name):
-            raise RuntimeError(f"can't find module {self.module_name}")
+        module_name = self.module_name + '.avo'
+        if not exists(module_name) or not isfile(module_name):
+            raise RuntimeError(f"can't find module {module_name}")
         source: str
-        with open(self.module_name, 'r', encoding='utf-8') as f:
+        with open(module_name, 'r', encoding='utf-8') as f:
             source = f.read()
         statements = stmt_list()(lex(source), 0)
         if statements:
             Signal.CREATE_BACK_LEVEL = True
+            MODULES[self.module_name] = STATEMENT_LIST_LEVEL + 1
             statements.value.eval()
+            print(MODULES)
+            print(ENV[MODULES[self.module_name]])

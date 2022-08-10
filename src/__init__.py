@@ -1,4 +1,4 @@
-from .lexer import lex, imp_parser, Signal, ENV, ENV_CONSTS, STATEMENT_LIST_LEVEL
+from .lexer import lex, imp_parser, Signal, ENV, ENV_CONSTS, STATEMENT_LIST_LEVEL, stmt_list
 
 
 version = 'v0.1.0'

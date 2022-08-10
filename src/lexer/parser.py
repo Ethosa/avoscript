@@ -39,7 +39,8 @@ unary_operators = ['--', '++']
 assign_operators = ['+=', '-=', '*=', '/=', '=']
 b_expr_precedence_levels = [
     ['and', '&&'],
-    ['or', '||']
+    ['or', '||'],
+    ['in']
 ]
 
 
@@ -70,7 +71,7 @@ def a_expr_group():
 
 
 def a_expr_term():
-    return a_expr_value() | a_expr_group()
+    return a_expr_value() | a_expr_group() | unary_op_stmt()
 
 
 def process_binop(op):
@@ -123,6 +124,8 @@ def process_logic(op):
             return lambda l, r: AndOp(l, r)
         case 'or' | '||':
             return lambda l, r: OrOp(l, r)
+        case 'in':
+            return lambda l, r: InOp(l, r)
         case _:
             raise RuntimeError(f'unknown logic operator: {op}')
 
@@ -247,10 +250,16 @@ def echo_stmt():
 def func_stmt():
     def process(p):
         ((((((_, func_name), _), args), _), _), statements), _ = p
-        return FuncStmt(func_name, args, statements)
+        arguments = []
+        for arg in args:
+            if arg.value[0][1] is None:
+                arguments.append(ArgumentAST(arg.value[0][0], None))
+            else:
+                arguments.append(ArgumentAST(arg.value[0][0], arg.value[0][1][1]))
+        return FuncStmt(func_name, arguments, statements)
     return (
             keyword('func') + id_tag + keyword('(') +
-            Opt(Rep(id_tag + Opt(operator('=') + Lazy(expr)) + Opt(keyword(',')))) +
+            Rep(id_tag + Opt(operator('=') + Lazy(expr)) + Opt(keyword(','))) +
             keyword(')') + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}')
     ) ^ process
 
@@ -258,10 +267,16 @@ def func_stmt():
 def call_stmt():
     def process(p):
         ((func_name, _), args), _ = p
-        return CallStmt(func_name, args)
+        arguments = []
+        for arg in args:
+            if arg.value[0][0] is None:
+                arguments.append(ArgumentAST(None, arg.value[0][1]))
+            else:
+                arguments.append(ArgumentAST(arg.value[0][0][0], arg.value[0][1]))
+        return CallStmt(func_name, arguments)
     return (
         id_tag + keyword('(') +
-        Opt(Rep(Opt(id_tag + operator('=')) + expr() + Opt(keyword(',')))) +
+        Rep(Opt(id_tag + operator('=')) + expr() + Opt(keyword(','))) +
         keyword(')')
     ) ^ process
 
@@ -289,7 +304,7 @@ def foreach_stmt():
         (((((_, var), _), val), _), body), _ = p
         return ForStmt(var, val, body, None)
     return (
-            keyword('for') + id_tag + keyword('in') + expr() +
+            keyword('for') + id_tag + operator('in') + expr() +
             keyword('{') + Opt(Lazy(stmt_list)) + keyword('}')
     ) ^ process
 
@@ -302,16 +317,16 @@ def import_stmt():
 
 def stmt():
     return (
-            for_stmt() |
-            foreach_stmt() |
             func_stmt() |
             call_stmt() |
+            for_stmt() |
+            echo_stmt() |
+            foreach_stmt() |
             assign_stmt() |
             assign_const_stmt() |
             reassign_stmt() |
             if_stmt() |
             while_stmt() |
-            echo_stmt() |
             unary_op_stmt() |
             break_stmt() |
             continue_stmt() |
