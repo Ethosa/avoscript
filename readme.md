@@ -2,6 +2,7 @@
 
 # AVOScript
 ### little language just for fun
+requires python `3.10.x`!
 
 </div>
 
@@ -45,6 +46,7 @@ python avoscript.py -h
         "array in other array"
       ]
     ]
+    var second_element = arr[1]
     ```
 - `if-elif-else`
   ```
