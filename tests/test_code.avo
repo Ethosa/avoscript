@@ -1,0 +1,102 @@
+var x = 1
+var y = 2
+var z = (x + y) * 2
+var s = "Hello, world!"
+var my_array = [
+    x y z s 256*2*2 "Last" + " element"
+    [
+        true, false, 5 > 2
+    ]
+]
+
+echo z, z == 20, z == 6, s
+echo "array my_array", my_array
+echo "second element from 'my_array' is ", my_array[1]
+echo "first elem from [1, 2, 3] is ", [1, 2, 3][0]
+echo "third char from 'avocat-team' is ", "avocat-team"[1+1]
+
+for var i = 0; i <= 2; ++i {
+    echo "for cycle, i =", i;
+}
+
+for i in [1, "OK", [], 2, 3] {
+    echo "foreach cycle also available ", i
+}
+
+const MY_CONST = 100
+
+func test() {
+    echo "test func"
+}
+test()
+
+func factorial(n) {
+    var i = 1
+    var res = 1
+    while i <= n {
+        res *= i
+        ++i
+    }
+    return res
+}
+echo "5! =", factorial(5);
+
+
+func fkwargs(name = "Andrew") {
+    echo name;
+}
+fkwargs(name="Ethosa");
+
+
+func test_func(a, b, c, d = 100, e = [1, 2, 3], f = "Hi") {
+    echo "arguments is", a, b, c, d, e, f;
+}
+test_func(1, 2, 3);
+test_func(0, 1, 2, f="Hello");
+
+{
+    var x = 15
+    echo x
+}
+echo x
+
+if z == 25 {
+    echo 1
+} elif 1 == 1 {
+    echo 101010
+} else {
+    echo 2
+}
+
+var i = 0
+while i < 10 {
+    ++i
+    echo i
+    if i >= 2 {
+        echo i*i*i
+        break
+    }
+}
+
+i = 0
+var j = 0
+while i < 4 {
+    j = 0
+    if i == 2 {
+       echo i
+       ++i
+       continue
+    } elif i == 3 {
+       echo i
+       break
+    }
+    while j < 2 {
+        echo j
+        break
+    }
+    ++i
+}
+
+echo MY_CONST;
+MY_CONST += 10;
+echo MY_CONST;
