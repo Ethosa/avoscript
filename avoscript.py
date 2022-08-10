@@ -24,17 +24,19 @@ parser.add_argument(
 )
 parser.add_argument(
     "-s", "--script",
-    dest="",
     help="execute script"
 )
-
 parser.add_argument(
     "-f", "--file",
-    dest="",
     help="execute file script"
+)
+parser.set_defaults(
+    script="",
+    file=""
 )
 
 args = parser.parse_args()
+print(args)
 
 
 if args.version:
@@ -45,15 +47,17 @@ elif args.interactive:
     ENV_CONSTS.append({})
     STATEMENT_LIST_LEVEL += 1
     print(
-        f"Welcome to {Fore.RED}AVOScript{Style.RESET_ALL} "
-        f"{Fore.CYAN}{version}{Style.RESET_ALL} interactive mode."
+        f"Welcome to {Fore.RED}AVOScript{Fore.RESET} "
+        f"{Fore.CYAN}{version}{Fore.RESET} interactive mode."
     )
-    source = input(Fore.GREEN + '>>> ' + Style.RESET_ALL)
+    print(f"{Fore.GREEN}>>>{Fore.RESET} ", end="")
+    source = input()
     while source != 'exit':
         lexed = lex(source)
         parsed = imp_parser(lexed)
         parsed.value.eval()
-        source = input(Fore.GREEN + '>>> ' + Style.RESET_ALL)
+        print(f"{Fore.GREEN}>>>{Fore.RESET} ", end="")
+        source = input()
     exit(0)
 elif args.script:
     imp_parser(lex(args.script)).value.eval()

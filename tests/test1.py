@@ -50,6 +50,13 @@ class MyTestCase(unittest.TestCase):
         parsed = imp_parser(lex(src))
         parsed.value.eval()
 
+    def test_8_modules(self):
+        src: str
+        with open('main.avo', 'r', encoding='utf-8') as f:
+            src = f.read()
+        parsed = imp_parser(lex(src))
+        parsed.value.eval()
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

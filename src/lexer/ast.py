@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+from os.path import exists, isfile
 from typing import Union, Tuple, List, Any
+from pprint import pprint
 
 from equality import AnyBase
 
@@ -31,6 +33,8 @@ class Signal:
     CONTINUE = False
     RETURN = False
     NO_CREATE_LEVEL = False
+    CREATE_BACK_LEVEL = False
+    BACK_LEVEL = None
     RETURN_VALUE = None
     ARGUMENTS = None
     KW_ARGUMENTS = None
@@ -279,6 +283,8 @@ class StmtList(Stmt):
             STATEMENT_LIST_LEVEL += 1
             ENV.append({})
             ENV_CONSTS.append({})
+        if Signal.CREATE_BACK_LEVEL:
+            Signal.BACK_LEVEL = STATEMENT_LIST_LEVEL
         # Arguments (if in function)
         if Signal.IN_FUNCTION and Signal.ARGUMENTS:
             for n, v in Signal.ARGUMENTS.items():
@@ -299,9 +305,15 @@ class StmtList(Stmt):
             if Signal.RETURN and Signal.IN_FUNCTION:
                 break
         if not Signal.NO_CREATE_LEVEL:
-            STATEMENT_LIST_LEVEL -= 1
-            ENV.pop()
-            ENV_CONSTS.pop()
+            if not Signal.CREATE_BACK_LEVEL or Signal.BACK_LEVEL != STATEMENT_LIST_LEVEL:
+                STATEMENT_LIST_LEVEL -= 1
+                ENV.pop()
+                ENV_CONSTS.pop()
+        if Signal.CREATE_BACK_LEVEL and Signal.BACK_LEVEL == STATEMENT_LIST_LEVEL:
+            Signal.CREATE_BACK_LEVEL = False
+            STATEMENT_LIST_LEVEL += 1
+            ENV.append({})
+            ENV_CONSTS.append({})
 
 
 class AssignStmt(Stmt):
@@ -546,3 +558,23 @@ class ReturnStmt(Stmt):
     def eval(self):
         Signal.RETURN = True
         Signal.RETURN_VALUE = self.val.eval()
+
+
+class ImportStmt(Stmt):
+    def __init__(self, module_name):
+        self.module_name = module_name + '.avo'
+
+    def __repr__(self) -> str:
+        return f"ImportStmt({self.module_name})"
+
+    def eval(self):
+        from src.lexer import stmt_list, lex
+        if not exists(self.module_name) or not isfile(self.module_name):
+            raise RuntimeError(f"can't find module {self.module_name}")
+        source: str
+        with open(self.module_name, 'r', encoding='utf-8') as f:
+            source = f.read()
+        statements = stmt_list()(lex(source), 0)
+        if statements:
+            Signal.CREATE_BACK_LEVEL = True
+            statements.value.eval()

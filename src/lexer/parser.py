@@ -294,6 +294,12 @@ def foreach_stmt():
     ) ^ process
 
 
+def import_stmt():
+    def process(p):
+        return ImportStmt(p[1])
+    return keyword('import') + id_tag ^ process
+
+
 def stmt():
     return (
             for_stmt() |
@@ -311,6 +317,7 @@ def stmt():
             continue_stmt() |
             block_stmt() |
             return_stmt() |
+            import_stmt() |
             expr()
     )
 

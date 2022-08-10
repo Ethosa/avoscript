@@ -12,7 +12,7 @@ TOKEN_EXPRESSIONS = [
     (r'\#[^\n]+', None),
     (r'\#\[[\s\S]+?\]\#', None),
     (r'\s', None),
-    (r'\b(if|elif|else|while|for|in|break|continue|echo|var|const|func|return)\b', Type.RESERVED),
+    (r'\b(if|elif|else|while|for|in|break|continue|echo|var|const|func|return|import)\b', Type.RESERVED),
     (r'[\(\)\{\}\[\];,]', Type.RESERVED),
     (r'(or|and|&&|\|\||\+\=|\-\=|\*\=|\/\=|\+\+|\-\-)', Type.OPERATOR),
     (r'>=', Type.OPERATOR),

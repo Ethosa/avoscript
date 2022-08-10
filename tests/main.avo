@@ -1,0 +1,12 @@
+# main avoscript file
+import module;
+import other_module;
+
+echo "Hello, world!";
+
+echo "pow(3, 4) =", pow(3, 4);
+echo "deg2rad(45 degrees) =", deg2rad(45);
+echo "rad2deg(deg2rad(45 degrees)) =", rad2deg(deg2rad(45));
+
+hello();
+hello(name="John");

@@ -1,0 +1,5 @@
+# other module file
+
+func hello(name = "Andrew") {
+    echo "Hello,", name;
+}

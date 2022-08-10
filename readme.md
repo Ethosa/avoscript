@@ -16,6 +16,23 @@ cd avoscript
 ```bash
 python avoscript.py -h
 ```
+flags
+- `-v`/`--version` AVOScript version
+  ```bash
+  python avoscript.py -v
+  ```
+- `-i`/`--interactive` interactive mode
+  ```bash
+  python avoscript.py -i
+  ```
+- `-s`/`--script` execute script
+  ```bash
+  python avoscript.py -s "var a = 1; echo a;"
+  ```
+- `-f`/`--file` execute code from file
+  ```bash
+  python avoscript.py -f tests/test_code.avo
+  ```
 
 ## Available Statements
 
@@ -104,4 +121,8 @@ python avoscript.py -h
   }
   kwargs(0);
   kwargs(0, name="Ethosa");
+  ```
+- `import`
+  ```
+  import MODULE_NAME
   ```
