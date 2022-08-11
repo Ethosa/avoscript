@@ -3,3 +3,7 @@
 func hello(name = "Andrew") {
     echo "Hello,", name;
 }
+
+func function() {
+    echo "other_module.avo";
+}

@@ -123,6 +123,23 @@ class VarAST(ASTExpr):
         raise RuntimeError(f'{self.var_name} was used before assign')
 
 
+class ModuleCallAST(ASTExpr):
+    def __init__(self, module_name, module_obj):
+        self.module_name = module_name
+        self.module_obj = module_obj
+
+    def __repr__(self) -> str:
+        return f"ModuleCallAST({self.module_name}, {self.module_obj})"
+
+    def eval(self):
+        if self.module_name in MODULES:
+            if self.module_obj not in ENV[MODULES[self.module_name]]:
+                raise RuntimeError(f"unknown module object {self.module_obj}")
+            return ENV[MODULES[self.module_name]][self.module_obj]
+        else:
+            raise RuntimeError(f"unknown module {self.module_obj}")
+
+
 class ArgumentAST(ASTExpr):
     """serves FuncStmt/CallStmt arguments"""
 
@@ -180,6 +197,8 @@ class BinOpAST(ASTExpr):
                 return lval - rval
             case '+':
                 return lval + rval
+            case '%':
+                return lval % rval
             case _:
                 raise RuntimeError('unknown operation')
 
@@ -208,6 +227,8 @@ class UnaryOpAST(ASTExpr):
                     assign_stmt.eval()
                     return self.expr.eval()
                 return binop.eval()
+            case '-':
+                return -(self.expr.eval())
             case _:
                 raise RuntimeError(f"unknown unary operation: {self.op}")
 
@@ -409,6 +430,7 @@ class IfStmt(Stmt):
 
     def eval(self):
         condition = self.condition.eval()
+        else_statement = True
         if condition:
             self.body.eval()
         else:
@@ -416,8 +438,10 @@ class IfStmt(Stmt):
                 (((_, condition), _), stmt_list), _ = i
                 if condition.eval():
                     stmt_list.eval()
-            if self.else_body:
-                self.else_body.eval()
+                    else_statement = False
+                    break
+        if self.else_body and else_statement:
+            self.else_body.eval()
 
 
 class WhileStmt(Stmt):
@@ -459,7 +483,6 @@ class ForStmt(Stmt):
 
     def eval(self):
         global STATEMENT_LIST_LEVEL
-        Signal.NO_CREATE_LEVEL = True
         ENV.append({})
         ENV_CONSTS.append({})
         STATEMENT_LIST_LEVEL += 1
@@ -487,7 +510,6 @@ class ForStmt(Stmt):
         STATEMENT_LIST_LEVEL -= 1
         ENV.pop()
         ENV_CONSTS.pop()
-        Signal.NO_CREATE_LEVEL = False
         Signal.IN_CYCLE = False
         Signal.BREAK = False
         Signal.CONTINUE = False
@@ -552,8 +574,12 @@ class CallStmt(Stmt):
 
     def eval(self):
         has_var, level, is_const = has_variable(self.name)
-        if has_var and self.name in ENV[level]:
+        f = None
+        if has_var and not is_const:
             f = ENV[level][self.name]
+        elif isinstance(self.name, ModuleCallAST):
+            f = self.name.eval()
+        if f:
             args = [i for i in self.args if i.name is None]
             fargs = [i for i in f[0] if i.value is None]
             kwargs = [i for i in self.args if i.name is not None]
@@ -562,11 +588,14 @@ class CallStmt(Stmt):
                 raise RuntimeError(
                     f"function {self.name} waited for {len(fargs)}, but got {len(args)} arguments"
                 )
-            Signal.IN_FUNCTION = True
             Signal.ARGUMENTS = {n: v for n, v in zip(fargs, args)}
             Signal.KW_ARGUMENTS = fkwargs + kwargs
-            f[1].eval()
-            Signal.IN_FUNCTION = False
+            if not Signal.IN_FUNCTION:
+                Signal.IN_FUNCTION = True
+                f[1].eval()
+                Signal.IN_FUNCTION = False
+            else:
+                f[1].eval()
             Signal.RETURN = False
 
             returned = Signal.RETURN_VALUE
@@ -595,14 +624,11 @@ class ImportStmt(Stmt):
         return f"ImportStmt({self.module_name})"
 
     def eval(self):
-        from src.lexer import stmt_list, lex
+        from src.lexer import stmt_list, Lexer
         module_name = self.module_name + '.avo'
         if not exists(module_name) or not isfile(module_name):
             raise RuntimeError(f"can't find module {module_name}")
-        source: str
-        with open(module_name, 'r', encoding='utf-8') as f:
-            source = f.read()
-        statements = stmt_list()(lex(source), 0)
+        statements = stmt_list()(Lexer.lex_file(module_name), 0)
         if statements:
             Signal.CREATE_BACK_LEVEL = True
             MODULES[self.module_name] = STATEMENT_LIST_LEVEL + 1

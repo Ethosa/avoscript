@@ -32,10 +32,10 @@ boolean = Tag(Type.BOOL) ^ process_boolean
 string = Tag(Type.STRING) ^ (lambda x: StringAST(x[1:-1]))
 a_expr_precedence_levels = [
     ['*', '/'],
-    ['+', '-'],
+    ['+', '-', '%'],
 ]
 relational_operators = ['==', '!=', '>=', '<=', '<', '>']
-unary_operators = ['--', '++']
+unary_operators = ['--', '++', '-']
 assign_operators = ['+=', '-=', '*=', '/=', '=']
 b_expr_precedence_levels = [
     ['and', '&&'],
@@ -49,6 +49,17 @@ def array_expr():
         (_, data), _ = p
         return ArrayAST(data)
     return keyword('[') + Opt(Rep(Lazy(expr) + Opt(keyword(',')))) + keyword(']') ^ process
+
+
+def module_obj_expr():
+    def process(p):
+        (module, _), var = p
+        return ModuleCallAST(module, var)
+    return id_tag + Alt(operator('.'), operator('::')) + id_tag ^ process
+
+
+def id_or_module():
+    return module_obj_expr() | id_tag
 
 
 def a_expr_value():
@@ -71,7 +82,7 @@ def a_expr_group():
 
 
 def a_expr_term():
-    return a_expr_value() | a_expr_group() | unary_op_stmt()
+    return Lazy(call_stmt) | a_expr_value() | a_expr_group() | unary_op_stmt()
 
 
 def process_binop(op):
@@ -103,7 +114,9 @@ def process_relop(p):
 
 
 def b_expr_relop():
-    return (a_expr() + any_op_in_list(relational_operators) + a_expr()) ^ process_relop
+    return (
+            a_expr() + any_op_in_list(relational_operators) + a_expr()
+    ) ^ process_relop
 
 
 def b_expr_not():
@@ -143,9 +156,9 @@ def brace_expr():
 
 def expr():
     return (
+            module_obj_expr() |
             brace_expr() |
             Lazy(array_expr) |
-            Lazy(call_stmt) |
             b_expr() |
             a_expr()
     )
@@ -275,7 +288,7 @@ def call_stmt():
                 arguments.append(ArgumentAST(arg.value[0][0][0], arg.value[0][1]))
         return CallStmt(func_name, arguments)
     return (
-        id_tag + keyword('(') +
+        id_or_module() + keyword('(') +
         Rep(Opt(id_tag + operator('=')) + expr() + Opt(keyword(','))) +
         keyword(')')
     ) ^ process

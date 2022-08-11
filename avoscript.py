@@ -2,9 +2,9 @@
 from argparse import ArgumentParser
 from sys import exit
 
-from src import lex, imp_parser, Signal, ENV, ENV_CONSTS, STATEMENT_LIST_LEVEL, version
+from src import Lexer, imp_parser, Signal, ENV, ENV_CONSTS, STATEMENT_LIST_LEVEL, version
 
-from colorama import Back, Fore, Style, init
+from colorama import Fore, init
 
 init(autoreset=True)
 parser = ArgumentParser(
@@ -39,7 +39,7 @@ args = parser.parse_args()
 
 
 if args.version:
-    print(f"{Fore.RED}AVOScript{Style.RESET_ALL} {Fore.CYAN}{version}{Style.RESET_ALL}")
+    print(f"{Fore.RED}AVOScript{Fore.RESET} {Fore.CYAN}{version}{Fore.RESET}")
 elif args.interactive:
     Signal.NO_CREATE_LEVEL = True
     ENV.append({})
@@ -52,16 +52,13 @@ elif args.interactive:
     print(f"{Fore.GREEN}>>>{Fore.RESET} ", end="")
     source = input()
     while source != 'exit':
-        lexed = lex(source)
+        lexed = Lexer.lex(source)
         parsed = imp_parser(lexed)
         parsed.value.eval()
         print(f"{Fore.GREEN}>>>{Fore.RESET} ", end="")
         source = input()
     exit(0)
 elif args.script:
-    imp_parser(lex(args.script)).value.eval()
+    imp_parser(Lexer.lex(args.script)).value.eval()
 elif args.file:
-    source: str
-    with open(args.file, 'r', encoding='utf-8') as f:
-        source = f.read()
-    imp_parser(lex(source)).value.eval()
+    imp_parser(Lexer.lex_file(args.file)).value.eval()

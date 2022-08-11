@@ -1,5 +1,5 @@
 # main avoscript file
-import module;
+import math;
 import other_module;
 
 echo "Hello, world!";
@@ -10,3 +10,26 @@ echo "rad2deg(deg2rad(45 degrees)) =", rad2deg(deg2rad(45));
 
 hello();
 hello(name="John");
+
+#[
+variables, consts and functions names can be any
+if it keeps between "`" symbols
+]#
+var `🍕` = "Pizza";
+echo `🍕`;
+
+var i = 0;
+while i <= 3 {
+    for var angle = 0; angle <= 180; angle += 30 {
+        if i == 0 {
+            echo "sin", i, angle, sin(angle);
+        } elif i == 1 {
+            echo "cos", i, angle, cos(angle);
+        } elif i == 2 {
+            echo "tan", i, angle, tan(angle);
+        } else {
+            echo "ctg", i, angle, ctg(angle);
+        }
+    }
+    ++i;
+}
