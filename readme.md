@@ -125,5 +125,41 @@ flags
 - `import`
   ```
   import MODULE_NAME
+  import math
   some_function_from_module();
+  pow(...);  # can throw error
+  # ok
+  math.pow(...);
+  MODULE_NAME.pow(...);
+  ```
+- `switch-case-else`
+  ```
+  var i = "hi";
+  switch i {
+    case 0 {  # i == 0
+      echo "... ok";
+    }
+    case [1, 2, 1023] {  # i in [1, 2, 1023]
+      echo "no no no";
+    }
+    case "hi" {  # i == "hi"
+     echo "yes";
+    }
+    else {}  # otherwise (optionally)
+  }
+  
+  # result from switch case
+  var result = switch i {
+    case "hi" {"hello, man";}
+  }
+  echo result;
+  ```
+- `ternary operator`
+  ```
+  # CONDITION ? TRUE_STMT : FALSE_STMT
+  # TRUE_STMT if CONDITION else FALSE_STMT
+  var i = 1 > 2 ? "what ..." : "okay";
+  echo i;
+  i = "okay" if 2 > 1 else "what ..."
+  echo i;
   ```

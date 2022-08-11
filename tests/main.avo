@@ -33,3 +33,22 @@ while i <= 3 {
     }
     ++i;
 }
+
+var switch_case_var = 911;
+
+var result = switch switch_case_var {
+    case 0 {
+        "Oops ...";
+    }
+    case [1, 1024, 512] {
+        "okay, result is 1024"
+    }
+    else {
+        ".. чел, ты ...";
+    }
+}
+echo result;
+result = 1024 == 512*2 ? "ok" : "not ok";
+echo result;
+result = "ok1" if 1024 == 512*2 else "not ok1";
+echo result;

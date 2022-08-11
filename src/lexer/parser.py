@@ -51,6 +51,16 @@ def array_expr():
     return keyword('[') + Opt(Rep(Lazy(expr) + Opt(keyword(',')))) + keyword(']') ^ process
 
 
+def if_else_expr():
+    def process(p):
+        (((body, op1), condition), op2), else_body = p
+        return TernaryOpAST(body, op1, condition, op2, else_body)
+    return (
+            Lazy(expr) + Alt(keyword('if'), operator('?')) + Lazy(expr) +
+            Alt(keyword('else'), operator(':')) + Lazy(expression)
+    ) ^ process
+
+
 def module_obj_expr():
     def process(p):
         (module, _), var = p
@@ -164,26 +174,30 @@ def expr():
     )
 
 
+def expression():
+    return if_else_expr() | Lazy(switch_case_stmt) | expr()
+
+
 # --== statements ==-- #
 def assign_stmt():
     def process(p):
         ((_, name), _), e = p
         return AssignStmt(name, e, False, True)
-    return (keyword('var') + id_tag + operator('=') + expr()) ^ process
+    return (keyword('var') + id_tag + operator('=') + expression()) ^ process
 
 
 def assign_const_stmt():
     def process(p):
         ((_, name), _), e = p
         return AssignStmt(name, e, True, True)
-    return (keyword('const') + id_tag + operator('=') + expr()) ^ process
+    return (keyword('const') + id_tag + operator('=') + expression()) ^ process
 
 
 def reassign_stmt():
     def process(p):
         (name, op), e = p
         return AssignStmt(name, e, False, False, op)
-    return (id_tag + any_op_in_list(assign_operators) + expr()) ^ process
+    return (id_tag + any_op_in_list(assign_operators) + expression()) ^ process
 
 
 def unary_op_stmt():
@@ -254,7 +268,7 @@ def echo_stmt():
             keyword('echo') +
             Opt(
                 Rep(
-                    expr() + Opt(keyword(',')) ^ (lambda x: x[0])
+                    expression() + Opt(keyword(',')) ^ (lambda x: x[0])
                 ) ^ (lambda x: [i.value for i in x])
             ) ^ process
     )
@@ -272,7 +286,7 @@ def func_stmt():
         return FuncStmt(func_name, arguments, statements)
     return (
             keyword('func') + id_tag + keyword('(') +
-            Rep(id_tag + Opt(operator('=') + Lazy(expr)) + Opt(keyword(','))) +
+            Rep(id_tag + Opt(operator('=') + Lazy(expression)) + Opt(keyword(','))) +
             keyword(')') + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}')
     ) ^ process
 
@@ -289,7 +303,7 @@ def call_stmt():
         return CallStmt(func_name, arguments)
     return (
         id_or_module() + keyword('(') +
-        Rep(Opt(id_tag + operator('=')) + expr() + Opt(keyword(','))) +
+        Rep(Opt(id_tag + operator('=')) + expression() + Opt(keyword(','))) +
         keyword(')')
     ) ^ process
 
@@ -298,7 +312,7 @@ def return_stmt():
     def process(p):
         _, return_value = p
         return ReturnStmt(return_value)
-    return keyword('return') + Opt(expr()) ^ process
+    return keyword('return') + Opt(expression()) ^ process
 
 
 def for_stmt():
@@ -317,7 +331,7 @@ def foreach_stmt():
         (((((_, var), _), val), _), body), _ = p
         return ForStmt(var, val, body, None)
     return (
-            keyword('for') + id_tag + operator('in') + expr() +
+            keyword('for') + id_tag + operator('in') + expression() +
             keyword('{') + Opt(Lazy(stmt_list)) + keyword('}')
     ) ^ process
 
@@ -326,6 +340,27 @@ def import_stmt():
     def process(p):
         return ImportStmt(p[1])
     return keyword('import') + id_tag ^ process
+
+
+def switch_case_stmt():
+    def process(p):
+        ((((_, var), _), cases), else_body), _ = p
+        cases_list = []
+        for c in cases:
+            (((_, cond), _), body), _ = c.value
+            cases_list.append(CaseStmt(cond, body))
+        if else_body:
+            ((_, _), else_body), _ = else_body
+            cases_list.append(CaseStmt(None, else_body))
+        return SwitchCaseStmt(var, cases_list)
+    return (
+            keyword('switch') + expression() + keyword('{') +
+            Rep(
+                keyword('case') + expression() + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}')
+            ) + Opt(
+               keyword('else') + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}')
+           ) + keyword('}')
+    ) ^ process
 
 
 def stmt():
@@ -346,7 +381,7 @@ def stmt():
             block_stmt() |
             return_stmt() |
             import_stmt() |
-            expr()
+            expression()
     )
 
 

@@ -64,7 +64,18 @@ class MyTestCase(unittest.TestCase):
         print(module_obj_expr()(Lexer.lex('some.asd'), 0))
 
     @staticmethod
-    def test_9_modules():
+    def test_9_switch_case():
+        print(switch_case_stmt()(Lexer.lex('switch s {case 0 {} case 1{} case 10{} else {}}'), 0))
+
+    @staticmethod
+    def test_a_if_else_expr():
+        print(assign_stmt()(Lexer.lex('var a = 0 if false else 1;'), 0))
+        print(assign_stmt()(Lexer.lex('var a = true ? 1 : 0;'), 0))
+        echo_stmt()(Lexer.lex('echo 100 if 2*2 == 4 else 0;'), 0).value.eval()
+        echo_stmt()(Lexer.lex('echo 2*2 == 4 ? true : false;'), 0).value.eval()
+
+    @staticmethod
+    def test_b_modules():
         parsed = imp_parser(Lexer.lex_file('main.avo'))
         parsed.value.eval()
 

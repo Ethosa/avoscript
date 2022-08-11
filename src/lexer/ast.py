@@ -233,6 +233,31 @@ class UnaryOpAST(ASTExpr):
                 raise RuntimeError(f"unknown unary operation: {self.op}")
 
 
+class TernaryOpAST(ASTExpr):
+    def __init__(self, first, op1, second, op2, third):
+        self.first = first
+        self.second = second
+        self.third = third
+        self.op1 = op1
+        self.op2 = op2
+
+    def __repr__(self) -> str:
+        return f"TernaryOpAST({self.first}, {self.op1}, {self.second}, {self.op2}, {self.third})"
+
+    def eval(self):
+        if self.op1 == '?' and self.op2 == ':':
+            if self.first.eval():
+                return self.second.eval()
+            else:
+                return self.third.eval()
+        elif self.op1 == 'if' and self.op2 == 'else':
+            if self.second.eval():
+                return self.first.eval()
+            else:
+                return self.third.eval()
+        raise RuntimeError(f"unknown ternary operator {self.op1}, {self.op2}")
+
+
 # --== Binary operations ==-- #
 class BinOpExpr(AnyBase):
     def eval(self):
@@ -346,8 +371,9 @@ class StmtList(Stmt):
                 ENV[STATEMENT_LIST_LEVEL][v.name] = v.value.eval()
             Signal.KW_ARGUMENTS = None
         # Statements
+        result = None
         for stmt in self.statements:
-            stmt.eval()
+            result = stmt.eval()
             if (Signal.BREAK or Signal.CONTINUE) and Signal.IN_CYCLE:
                 break
             if Signal.RETURN and Signal.IN_FUNCTION:
@@ -362,6 +388,7 @@ class StmtList(Stmt):
             STATEMENT_LIST_LEVEL += 1
             ENV.append({})
             ENV_CONSTS.append({})
+        return result
 
 
 class AssignStmt(Stmt):
@@ -442,6 +469,45 @@ class IfStmt(Stmt):
                     break
         if self.else_body and else_statement:
             self.else_body.eval()
+
+
+class SwitchCaseStmt(Stmt):
+    def __init__(self, var, cases):
+        self.var = var
+        self.cases = cases
+
+    def __repr__(self) -> str:
+        return f"SwitchCaseStmt({self.var}, {self.cases})"
+
+    def eval(self):
+        var = self.var.eval()
+        result = None
+        for c in self.cases:
+            if isinstance(c, CaseStmt):
+                if c.condition:
+                    val = c.condition.eval()
+                    if val == var:
+                        result = c.body.eval()
+                        break
+                    elif isinstance(val, (tuple, list)) and var in val:
+                        result = c.body.eval()
+                        break
+                else:
+                    result = c.body.eval()
+                    break
+        return result
+
+
+class CaseStmt(Stmt):
+    def __init__(self, condition, body):
+        self.condition = condition
+        self.body = body
+
+    def __repr__(self) -> str:
+        return f"CaseStmt({self.condition}, {self.body})"
+
+    def eval(self):
+        pass
 
 
 class WhileStmt(Stmt):
