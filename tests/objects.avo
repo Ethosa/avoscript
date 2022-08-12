@@ -1,0 +1,38 @@
+class A {
+    init {
+    }
+}
+
+class B : A {
+    var b = 123;
+    init (a) {
+        this::b = a;
+    }
+    func show_b() {
+        return this::b;
+    }
+}
+
+class C : B {
+    var b = 0;
+    var d = 0;
+
+    init(a, b, c, d=1) {
+    }
+
+    func inc_d() {
+        this::d = this::d + 1;
+    }
+}
+
+var b = B(1);
+var c = B(2);
+var x = C(3, 2, 1);
+echo b::show_b(), c::show_b(), x::show_b();
+
+echo x::d;
+x::inc_d();
+echo x::d;
+
+var a = A();
+echo a;

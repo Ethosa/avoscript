@@ -2,6 +2,16 @@
 import math;
 import other_module;
 
+
+class MyFirstClass {
+    var prop = 0;
+
+    func abc() {
+
+    }
+}
+
+
 echo "Hello, world!";
 
 echo "pow(3, 4) =", pow(3, 4);

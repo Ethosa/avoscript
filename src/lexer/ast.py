@@ -2,6 +2,7 @@
 from os.path import exists, isfile
 from typing import Union, Tuple, List, Any
 from pprint import pprint
+from copy import deepcopy
 
 from equality import AnyBase
 
@@ -31,6 +32,7 @@ class Signal:
     IN_CYCLE = False
     IN_FOR_CYCLE = False
     IN_FUNCTION = False
+    IN_CLASS = False
     BREAK = False
     CONTINUE = False
     RETURN = False
@@ -40,6 +42,7 @@ class Signal:
     RETURN_VALUE = None
     ARGUMENTS = None
     KW_ARGUMENTS = None
+    CURRENT_CLASS = None
 
 
 # --== AST ==-- #
@@ -138,6 +141,33 @@ class ModuleCallAST(ASTExpr):
             return ENV[MODULES[self.module_name]][self.module_obj]
         else:
             raise RuntimeError(f"unknown module {self.module_obj}")
+
+
+class ClassPropAST(ASTExpr):
+    def __init__(self, name, prop):
+        self.name = name
+        self.prop = prop
+
+    def __repr__(self) -> str:
+        return f"ClassPropAST({self.name}, {self.prop})"
+
+    def eval(self):
+        if Signal.IN_CLASS and Signal.CURRENT_CLASS and self.name == 'this':
+            self.name = Signal.CURRENT_CLASS
+        has_var, level, is_const = has_variable(self.name)
+        if has_var:
+            obj = ENV[level][self.name]
+            result = None
+            while obj[0] and result is None:
+                if self.prop in obj[1]:
+                    result = obj[1][self.prop]
+                    break
+                obj = obj[0]
+            if result is not None:
+                return result
+            raise RuntimeError(f"unknown property {self.prop}")
+        else:
+            raise RuntimeError(f"unknown class {self.name}")
 
 
 class ArgumentAST(ASTExpr):
@@ -411,6 +441,7 @@ class AssignStmt(Stmt):
 
     def eval(self):
         has_var, level, is_const = has_variable(self.name)
+        val = self.a_expr
         if self.is_assign:
             # Assign var/const
             if self.assign_op != '=':
@@ -418,11 +449,10 @@ class AssignStmt(Stmt):
             if has_var and level == STATEMENT_LIST_LEVEL:
                 raise RuntimeError(f"{self.name} is assigned")
             if self.is_const:
-                ENV_CONSTS[STATEMENT_LIST_LEVEL][self.name] = self.a_expr.eval()
+                ENV_CONSTS[STATEMENT_LIST_LEVEL][self.name] = val.eval()
             else:
-                ENV[STATEMENT_LIST_LEVEL][self.name] = self.a_expr.eval()
+                ENV[STATEMENT_LIST_LEVEL][self.name] = val.eval()
         elif has_var:
-            val = self.a_expr
             match self.assign_op:
                 case '*=':
                     val = BinOpAST('*', VarAST(self.name), val)
@@ -441,8 +471,82 @@ class AssignStmt(Stmt):
                 ENV_CONSTS[level][self.name] = val.eval()
             else:
                 ENV[level][self.name] = val.eval()
+        elif isinstance(self.name, ModuleCallAST):
+            module = self.name
+            if module.module_name not in MODULES:
+                raise RuntimeError(f"unknown module {module.module_name}")
+            if module.module_obj in ENV[MODULES[module.module_name]]:
+                ENV[MODULES[module.module_name]][module.module_obj] = val.eval()
+            elif module.module_obj in ENV_CONSTS[MODULES[module.module_name]]:
+                ENV_CONSTS[MODULES[module.module_name]][module.module_obj] = val.eval()
+            else:
+                raise RuntimeError(f"unknown module property {module.module_obj}")
+        elif isinstance(self.name, ClassPropAST):
+            obj = self.name
+            if Signal.IN_CLASS and Signal.CURRENT_CLASS and obj.name == 'this':
+                obj.name = Signal.CURRENT_CLASS
+            has_var, level, is_const = has_variable(obj.name)
+            if has_var and not is_const:
+                var = ENV[level][obj.name]
+                while var[0]:
+                    if obj.prop in var[1]:
+                        var[1][obj.prop] = val.eval()
+                        return
+                raise RuntimeError(f"unknown class property")
+            else:
+                raise RuntimeError(f"unknown class {obj.name}")
         else:
             raise RuntimeError(f"{self.name} isn't assigned")
+
+
+class AssignClassStmt(Stmt):
+    def __init__(self, name, body, inherit):
+        self.name = name
+        self.body = body
+        self.inherit = inherit
+
+    def __repr__(self) -> str:
+        return f"AssignClassStmt({self.name}, {self.inherit}, {self.body})"
+
+    def eval(self):
+        global STATEMENT_LIST_LEVEL
+        has_var, level, is_const = has_variable(self.name)
+        if not has_var:
+            ENV[STATEMENT_LIST_LEVEL][self.name] = (self.inherit, {})
+            ENV.append({})
+            ENV_CONSTS.append({})
+            Signal.NO_CREATE_LEVEL = True
+            STATEMENT_LIST_LEVEL += 1
+            self.body.eval()
+            if self.inherit:
+                has_var, level, is_const = has_variable(self.inherit)
+                if has_var:
+                    self.inherit = ENV[level][self.inherit]
+                else:
+                    raise RuntimeError(f"unknown inherit class {self.inherit}")
+            ENV[STATEMENT_LIST_LEVEL - 1][self.name] = (
+                self.inherit, ENV[STATEMENT_LIST_LEVEL], ENV_CONSTS[STATEMENT_LIST_LEVEL], self.name
+            )
+            STATEMENT_LIST_LEVEL -= 1
+            ENV.pop()
+            ENV_CONSTS.pop()
+            Signal.NO_CREATE_LEVEL = False
+        else:
+            raise RuntimeError(f"{self.name} is assigned")
+
+
+class InitClassStmt(Stmt):
+    def __init__(self, args, body):
+        self.args = args
+        self.body = body
+
+    def __repr__(self) -> str:
+        return f"InitClassStmt({self.args})"
+
+    def eval(self):
+        if None in ENV[STATEMENT_LIST_LEVEL]:
+            raise RuntimeError("this class equals init function")
+        ENV[STATEMENT_LIST_LEVEL][None] = (self.args, self.body)
 
 
 class IfStmt(Stmt):
@@ -606,9 +710,19 @@ class EchoStmt(Stmt):
 
     def eval(self):
         if isinstance(self.data, (Stmt, ASTExpr, BinOpExpr)):
-            print(self.data.eval())
+            val = self.data.eval()
+            if isinstance(val, tuple) and len(val) == 4:
+                print(f"class {val[3]}")
+            else:
+                print(val)
         elif isinstance(self.data, (list, tuple)):
-            print(*[i.eval() for i in self.data])
+            for i in self.data:
+                val = i.eval()
+                if isinstance(val, tuple) and len(val) == 4:
+                    print(f"class {val[3]}", end=" ")
+                else:
+                    print(val, end=" ")
+            print()
         else:
             print(self.data)
 
@@ -641,10 +755,25 @@ class CallStmt(Stmt):
     def eval(self):
         has_var, level, is_const = has_variable(self.name)
         f = None
+        init_obj = None
         if has_var and not is_const:
             f = ENV[level][self.name]
+            if len(f) == 4:  # class
+                if not Signal.IN_CLASS:
+                    Signal.CURRENT_CLASS = self.name
+                Signal.IN_CLASS = True
+                init_obj = f
+                if None in f[1]:
+                    f = f[1][None]
+                else:
+                    f = ([], StmtList([]))
         elif isinstance(self.name, ModuleCallAST):
             f = self.name.eval()
+        elif isinstance(self.name, ClassPropAST):
+            f = self.name.eval()
+            if not Signal.IN_CLASS:
+                Signal.CURRENT_CLASS = self.name.name
+            Signal.IN_CLASS = True
         if f:
             args = [i for i in self.args if i.name is None]
             fargs = [i for i in f[0] if i.value is None]
@@ -662,10 +791,14 @@ class CallStmt(Stmt):
                 Signal.IN_FUNCTION = False
             else:
                 f[1].eval()
+            if init_obj:
+                Signal.RETURN_VALUE = deepcopy(init_obj)
             Signal.RETURN = False
 
             returned = Signal.RETURN_VALUE
             Signal.RETURN_VALUE = None
+            Signal.IN_CLASS = False
+            Signal.CURRENT_CLASS = None
             return returned
         raise RuntimeError(f"function {self.name} isn't available")
 
@@ -699,5 +832,3 @@ class ImportStmt(Stmt):
             Signal.CREATE_BACK_LEVEL = True
             MODULES[self.module_name] = STATEMENT_LIST_LEVEL + 1
             statements.value.eval()
-            print(MODULES)
-            print(ENV[MODULES[self.module_name]])

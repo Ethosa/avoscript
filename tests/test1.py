@@ -75,7 +75,13 @@ class MyTestCase(unittest.TestCase):
         echo_stmt()(Lexer.lex('echo 2*2 == 4 ? true : false;'), 0).value.eval()
 
     @staticmethod
-    def test_b_modules():
+    def test_b_assign_class_stmt():
+        print(assign_class_stmt()(Lexer.lex('class A { }'), 0))
+        print(assign_class_stmt()(Lexer.lex('class B : A { var a = 0;  func main() {} }'), 0))
+        imp_parser(Lexer.lex_file('objects.avo')).value.eval()
+
+    @staticmethod
+    def test_c_modules():
         parsed = imp_parser(Lexer.lex_file('main.avo'))
         parsed.value.eval()
 

@@ -65,11 +65,11 @@ def module_obj_expr():
     def process(p):
         (module, _), var = p
         return ModuleCallAST(module, var)
-    return id_tag + Alt(operator('.'), operator('::')) + id_tag ^ process
+    return id_tag + operator('.') + id_tag ^ process
 
 
 def id_or_module():
-    return module_obj_expr() | id_tag
+    return class_property_stmt() | module_obj_expr() | id_tag
 
 
 def a_expr_value():
@@ -92,7 +92,7 @@ def a_expr_group():
 
 
 def a_expr_term():
-    return Lazy(call_stmt) | a_expr_value() | a_expr_group() | unary_op_stmt()
+    return Lazy(call_stmt) | Lazy(class_property_stmt) | a_expr_value() | a_expr_group() | unary_op_stmt()
 
 
 def process_binop(op):
@@ -174,6 +174,13 @@ def expr():
     )
 
 
+def class_property_stmt():
+    def process(p):
+        (name, _), var = p
+        return ClassPropAST(name, var)
+    return Alt(id_tag, keyword('this')) + operator('::') + id_tag ^ process
+
+
 def expression():
     return if_else_expr() | Lazy(switch_case_stmt) | expr()
 
@@ -197,7 +204,7 @@ def reassign_stmt():
     def process(p):
         (name, op), e = p
         return AssignStmt(name, e, False, False, op)
-    return (id_tag + any_op_in_list(assign_operators) + expression()) ^ process
+    return (id_or_module() + any_op_in_list(assign_operators) + expression()) ^ process
 
 
 def unary_op_stmt():
@@ -206,7 +213,7 @@ def unary_op_stmt():
         if sym not in unary_operators:
             name, sym = sym, name
         return UnaryOpAST(sym, VarAST(name))
-    return Alt(any_op_in_list(unary_operators) + id_tag, id_tag + any_op_in_list(unary_operators)) ^ process
+    return Alt(any_op_in_list(unary_operators) + id_or_module(), id_or_module() + any_op_in_list(unary_operators)) ^ process
 
 
 def stmt_list():
@@ -359,12 +366,63 @@ def switch_case_stmt():
                 keyword('case') + expression() + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}')
             ) + Opt(
                keyword('else') + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}')
-           ) + keyword('}')
+            ) + keyword('}')
     ) ^ process
+
+
+def assign_class_stmt():
+    def process(p):
+        ((((_, name), inherit), _), body), _ = p
+        if inherit:
+            _, inherit = inherit
+        return AssignClassStmt(name, body, inherit)
+    return (
+            keyword('class') + id_tag + Opt(operator(':') + id_tag) + keyword('{') +
+            Opt(Lazy(class_body)) + keyword('}')
+    ) ^ process
+
+
+def class_body():
+    def process(p):
+        return StmtList(p)
+    return Rep(
+        Lazy(class_body_stmt) + Opt(keyword(';')) ^ (lambda x: x[0])
+    ) ^ process
+
+
+def init_class_stmt():
+    def process(p):
+        (((_, args), _), body), _ = p
+        arguments = []
+        if args:
+            (_, args), _ = args
+            for arg in args:
+                if arg.value[0][1] is None:
+                    arguments.append(ArgumentAST(arg.value[0][0], None))
+                else:
+                    arguments.append(ArgumentAST(arg.value[0][0], arg.value[0][1][1]))
+        return InitClassStmt(arguments, body)
+    return (
+            keyword('init') + Opt(keyword('(') + Rep(
+               id_tag + Opt(operator('=') + Lazy(expression)) + Opt(keyword(','))
+            ) + keyword(')')) +
+            keyword('{') + Opt(Lazy(stmt_list)) + keyword('}')
+    ) ^ process
+
+
+def class_body_stmt():
+    return (
+        init_class_stmt() |
+        func_stmt() |
+        assign_stmt() |
+        assign_const_stmt() |
+        assign_class_stmt()
+    )
 
 
 def stmt():
     return (
+            assign_class_stmt() |
             func_stmt() |
             call_stmt() |
             for_stmt() |

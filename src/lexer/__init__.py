@@ -14,6 +14,7 @@ class Lexer:
         (r'\#[^\n]+', None),
         (r'\s', None),
         (r'\b(if|elif|else|switch|case|while|for|break|continue|echo|var|const|func|return|import)\b', Type.RESERVED),
+        (r'\b(class|init|super|this)\b', Type.RESERVED),
         (r'[\(\)\{\}\[\];,]', Type.RESERVED),
         (r'(\bin\b|\bor\b|\band\b|&&|\|\||\+\=|\-\=|\*\=|\/\=|\+\+|\-\-)', Type.OPERATOR),
         (r'>=', Type.OPERATOR),
