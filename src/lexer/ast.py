@@ -174,6 +174,8 @@ class ClassPropAST(ASTExpr):
                     result = obj['env_consts'][self.prop]
                     break
             if result is not None:
+                if obj['prefix'] == 'abstract':
+                    print(f'[WARNING]: {self.prop} is abstract property')
                 return result
             raise RuntimeError(f"unknown property {self.prop} of {self.name}")
         else:
