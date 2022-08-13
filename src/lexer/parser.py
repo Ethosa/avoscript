@@ -109,7 +109,14 @@ def a_expr_group():
 
 
 def a_expr_term():
-    return Lazy(call_stmt) | Lazy(class_property_stmt) | a_expr_value() | a_expr_group() | unary_op_stmt()
+    return (
+            Lazy(read_stmt) |
+            Lazy(call_stmt) |
+            Lazy(class_property_stmt) |
+            a_expr_value() |
+            a_expr_group() |
+            unary_op_stmt()
+    )
 
 
 def process_binop(op):
@@ -295,16 +302,23 @@ def continue_stmt():
 
 def echo_stmt():
     def process(p):
-        _, data = p
+        (_, data), _ = p
         return EchoStmt(data)
     return (
-            keyword('echo') +
+            keyword('echo') + keyword('(') +
             Opt(
                 Rep(
                     expression() + Opt(keyword(',')) ^ (lambda x: x[0])
                 ) ^ (lambda x: [i.value for i in x])
-            ) ^ process
+            ) + keyword(')') ^ process
     )
+
+
+def read_stmt():
+    def process(p):
+        _, text = p
+        return ReadStmt(text)
+    return keyword('read') + expression() ^ process
 
 
 def func_stmt():

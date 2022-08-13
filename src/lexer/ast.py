@@ -43,6 +43,7 @@ class Signal:
     ARGUMENTS = None
     KW_ARGUMENTS = None
     CURRENT_CLASS = None
+    ERROR = None
 
 
 # --== AST ==-- #
@@ -833,6 +834,20 @@ class EchoStmt(Stmt):
             print()
         else:
             print(self.data)
+
+
+class ReadStmt(Stmt):
+    def __init__(self, text):
+        self.text = text
+
+    def __repr__(self) -> str:
+        return f"ReadStmt({self.text})"
+
+    def eval(self):
+        if isinstance(self.text, ASTExpr):
+            return input(self.text.eval())
+        elif isinstance(self.text, str):
+            return self.text
 
 
 class FuncStmt(Stmt):

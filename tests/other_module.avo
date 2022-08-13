@@ -1,9 +1,9 @@
 # other module file
 
 func hello(name = "Andrew") {
-    echo "Hello,", name;
+    echo("Hello,", name);
 }
 
 func function() {
-    echo "other_module.avo";
+    echo("other_module.avo");
 }

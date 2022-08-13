@@ -69,19 +69,21 @@ flags
 - `if-elif-else`
   ```
   if false {
-    echo 1;
+    echo(1);
   } elif 3 > 2 and 3 < 2 {
-    echo 2;
+    echo(2);
   } elif 2 > 5 {
-    echo 3;
+    echo(3);
   } else {
-    echo 0;
+    echo(0);
   }
   ```
-- `echo`
+- `echo-read`
   ```
   var i = 10;
-  echo 1, true, 2 > 3, i;  # separated by " "
+  echo(1, true, 2 > 3, i;  # separated by " ");
+  var input = read("write data here");
+  echo input;
   ```
 - `while`
   ```
@@ -98,10 +100,10 @@ flags
 - `for`
   ```
   for var i = 0; i <= 5; ++i {
-    echo "C-like syntax", i
+    echo("C-like syntax", i)
   }
   for i in [5, "OK", 3.14159, [], false] {
-    echo "Python-like syntax", i
+    echo("Python-like syntax", i)
   }
   ```
 - `func`
@@ -118,7 +120,7 @@ flags
   echo 5, factorial(5);
   
   func kwargs(a, b=3.14159, name="Andrew") {
-    echo "arguments is", a, b, name
+    echo("arguments is", a, b, name)
   }
   kwargs(0);
   kwargs(0, name="Ethosa");
@@ -143,13 +145,13 @@ flags
   var i = "hi";
   switch i {
     case 0 {  # i == 0
-      echo "... ok";
+      echo("... ok");
     }
     case [1, 2, 1023] {  # i in [1, 2, 1023]
-      echo "no no no";
+      echo("no no no");
     }
     case "hi" {  # i == "hi"
-     echo "yes";
+     echo("yes");
     }
     else {}  # otherwise (optionally)
   }
@@ -158,21 +160,21 @@ flags
   var result = switch i {
     case "hi" {"hello, man";}
   }
-  echo result;
+  echo(result);
   ```
 - `ternary operator`
   ```
   # CONDITION ? TRUE_STMT : FALSE_STMT
   # TRUE_STMT if CONDITION else FALSE_STMT
   var i = 1 > 2 ? "what ..." : "okay";
-  echo i;
+  echo(i);
   i = "okay" if 2 > 1 else "what ..."
-  echo i;
+  echo(i);
   ```
 - `lambda`
   ```
   var a = (a) => {
-    echo a, "lambda is cool";
+    echo(a, "lambda is cool");
   }
   a(5);
   ```
@@ -184,12 +186,12 @@ flags
   }
   class Cat : Animal {
     func say() {
-      echo "meow";
+      echo("meow");
     }
   }
   class Dog : Animal {
     func say() {
-      echo "woof";
+      echo("woof");
     }
   }
   var a1 = Animal();

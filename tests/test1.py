@@ -71,8 +71,8 @@ class MyTestCase(unittest.TestCase):
     def test_a_if_else_expr():
         print(assign_stmt()(Lexer.lex('var a = 0 if false else 1;'), 0))
         print(assign_stmt()(Lexer.lex('var a = true ? 1 : 0;'), 0))
-        echo_stmt()(Lexer.lex('echo 100 if 2*2 == 4 else 0;'), 0).value.eval()
-        echo_stmt()(Lexer.lex('echo 2*2 == 4 ? true : false;'), 0).value.eval()
+        echo_stmt()(Lexer.lex('echo(100 if 2*2 == 4 else 0);'), 0).value.eval()
+        echo_stmt()(Lexer.lex('echo(2*2 == 4 ? true : false);'), 0).value.eval()
 
     @staticmethod
     def test_b_assign_class_stmt():
@@ -83,7 +83,7 @@ class MyTestCase(unittest.TestCase):
     @staticmethod
     def test_c_lambda_stmt():
         print(assign_stmt()(Lexer.lex('var a = () => {}'), 0))
-        imp_parser(Lexer.lex('var a = (a) => {echo a, "lambda is cool";}; a(5);')).value.eval()
+        imp_parser(Lexer.lex('var a = (a) => {echo(a, "lambda is cool");}; a(5);')).value.eval()
 
     @staticmethod
     def test_d_modules():
