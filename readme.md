@@ -178,7 +178,7 @@ flags
   ```
 - `class`
   ```
-  class Animal {
+  abstract class Animal {
     func say() {
     }
   }
