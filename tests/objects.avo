@@ -38,7 +38,13 @@ var a = A();
 echo a;
 
 
-abstract class Animal {
+interface Color {
+    var color = "black"
+    func test()
+}
+
+
+abstract class Animal of Color {
   func say() {
     echo "...";
   }
@@ -63,6 +69,8 @@ class Horse : Animal{}
 var a1 = Animal();
 var a2 = Cat();
 var a3 = Dog();
+
+Cat::say();  # static call
 
 a1::say();
 a2::say();

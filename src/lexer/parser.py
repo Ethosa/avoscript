@@ -324,6 +324,23 @@ def func_stmt():
     ) ^ process
 
 
+def interface_func_stmt():
+    def process(p):
+        (((_, func_name), _), args), _ = p
+        arguments = []
+        for arg in args:
+            if arg.value[0][1] is None:
+                arguments.append(ArgumentAST(arg.value[0][0], None))
+            else:
+                arguments.append(ArgumentAST(arg.value[0][0], arg.value[0][1][1]))
+        return FuncStmt(func_name, arguments, StmtList([]))
+    return (
+            keyword('func') + id_tag + keyword('(') +
+            Rep(id_tag + Opt(operator('=') + Lazy(expression)) + Opt(keyword(','))) +
+            keyword(')')
+    ) ^ process
+
+
 def call_stmt():
     def process(p):
         ((func_name, _), args), _ = p
@@ -409,13 +426,28 @@ def switch_case_stmt():
 
 def assign_class_stmt():
     def process(p):
-        (((((prefix, _), name), inherit), _), body), _ = p
+        ((((((prefix, _), name), inherit), interfaces), _), body), _ = p
         if inherit:
             _, inherit = inherit
-        return AssignClassStmt(name, body, inherit, prefix)
+        if interfaces:
+            (_, interface), interfaces = interfaces
+            interfaces = [i.value for i in interfaces] + [interface]
+        else:
+            interfaces = []
+        return AssignClassStmt(name, body, inherit, prefix, interfaces)
     return (
-            Opt(keyword('abstract')) + keyword('class') + id_tag + Opt(operator(':') + id_tag) + keyword('{') +
-            Opt(Lazy(class_body)) + keyword('}')
+            Opt(keyword('abstract')) + keyword('class') + id_tag + Opt(operator(':') + id_tag) +
+            Opt(keyword('of') + id_tag + Rep(id_tag)) +
+            keyword('{') + Opt(Lazy(class_body)) + keyword('}')
+    ) ^ process
+
+
+def assign_interface_stmt():
+    def process(p):
+        (((_, name), _), body), _ = p
+        return InterfaceStmt(name, body)
+    return (
+            keyword('interface') + id_tag + keyword('{') + Opt(Lazy(interface_body)) + keyword('}')
     ) ^ process
 
 
@@ -424,6 +456,14 @@ def class_body():
         return StmtList(p)
     return Rep(
         Lazy(class_body_stmt) + Opt(keyword(';')) ^ (lambda x: x[0])
+    ) ^ process
+
+
+def interface_body():
+    def process(p):
+        return StmtList(p)
+    return Rep(
+        Lazy(interface_body_stmt) + Opt(keyword(';')) ^ (lambda x: x[0])
     ) ^ process
 
 
@@ -457,9 +497,18 @@ def class_body_stmt():
     )
 
 
+def interface_body_stmt():
+    return (
+        interface_func_stmt() |
+        assign_stmt() |
+        assign_const_stmt()
+    )
+
+
 def stmt():
     return (
             assign_class_stmt() |
+            assign_interface_stmt() |
             func_stmt() |
             call_stmt() |
             for_stmt() |

@@ -199,3 +199,16 @@ flags
   a2::say();
   a3::say();
   ```
+- `interface`
+  ```
+  interface Interface {
+    func on_failure()
+    func on_result()
+  }
+  interface Animal {
+    var color = "black";
+    var age = 0;
+  }
+  
+  class MyClass : ParentClass of Interface, Animal {}
+  ```

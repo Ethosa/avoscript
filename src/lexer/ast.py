@@ -534,11 +534,12 @@ class AssignStmt(Stmt):
 
 
 class AssignClassStmt(Stmt):
-    def __init__(self, name, body, inherit, prefix):
+    def __init__(self, name, body, inherit, prefix, interfaces):
         self.name = name
         self.body = body
         self.inherit = inherit
         self.prefix = prefix
+        self.interfaces = interfaces
 
     def __repr__(self) -> str:
         return f"AssignClassStmt({self.prefix + ' ' if self.prefix else ''}{self.name}, {self.inherit}, {self.body})"
@@ -558,45 +559,86 @@ class AssignClassStmt(Stmt):
                     self.inherit = ENV[level][self.inherit]
                 else:
                     raise RuntimeError(f"unknown inherit class {self.inherit}")
+            parent = self.inherit
+            must_have_data = []
+            for interface in self.interfaces:
+                h, l, c = has_variable(interface)
+                if h:
+                    interface = ENV[l][interface]
+                    must_have_data += [i for i in interface['env'].keys() if i not in must_have_data]
+                    must_have_data += [i for i in interface['consts_env'].keys() if i not in must_have_data]
+                else:
+                    raise RuntimeError(f"unknown interface {interface} of class {self.name}")
             ENV[STATEMENT_LIST_LEVEL - 1][self.name] = {
                 'parent': self.inherit,
                 'env': deepcopy(ENV[STATEMENT_LIST_LEVEL]),
                 'consts_env': deepcopy(ENV_CONSTS[STATEMENT_LIST_LEVEL]),
                 'name': self.name,
-                'prefix': self.prefix
+                'prefix': self.prefix,
+                'must_have_data': must_have_data
             }
-            parent = self.inherit
-            must_have_data = []
             if parent:
                 # what should be implemented?
                 prefix = parent['prefix']
+                must_have_data += [i for i in parent['must_have_data'] if i not in must_have_data]
                 if prefix == 'abstract':
-                    must_have_data += [i for i in parent['env'].keys()]
-                    must_have_data += [i for i in parent['consts_env'].keys()]
+                    must_have_data += [i for i in parent['env'].keys() if i not in must_have_data]
+                    must_have_data += [i for i in parent['consts_env'].keys() if i not in must_have_data]
                 while parent['parent']:
                     parent = parent['parent']
+                    must_have_data += [i for i in parent['must_have_data'] if i not in must_have_data]
                     if prefix == 'abstract':
-                        must_have_data += [i for i in parent['env'].keys()]
-                        must_have_data += [i for i in parent['consts_env'].keys()]
-                # what is implemented
+                        must_have_data += [i for i in parent['env'].keys() if i not in must_have_data]
+                        must_have_data += [i for i in parent['consts_env'].keys() if i not in must_have_data]
+            # what is implemented
+            for data in must_have_data:
                 parent = ENV[STATEMENT_LIST_LEVEL - 1][self.name]
                 prefix = parent['prefix']
-                for data in must_have_data:
+                if (data in parent['env'] or data in parent['consts_env']) and prefix != 'abstract':
+                    must_have_data.remove(data)
+                    continue
+                while parent['parent']:
+                    parent = parent['parent']
+                    prefix = parent['prefix']
                     if (data in parent['env'] or data in parent['consts_env']) and prefix != 'abstract':
                         must_have_data.remove(data)
-                        continue
-                    while parent['parent']:
-                        parent = parent['parent']
-                        prefix = parent['prefix']
-                        if (data in parent['env'] or data in parent['consts_env']) and prefix != 'abstract':
-                            must_have_data.remove(data)
-                            break
+                        break
             STATEMENT_LIST_LEVEL -= 1
             ENV.pop()
             ENV_CONSTS.pop()
             Signal.NO_CREATE_LEVEL = False
             if len(must_have_data) > 0:
                 print(f"[WARNING]: {', '.join(must_have_data)} isn't implemented in {self.name}")
+        else:
+            raise RuntimeError(f"{self.name} is assigned")
+
+
+class InterfaceStmt(Stmt):
+    def __init__(self, name, body):
+        self.name = name
+        self.body = body
+
+    def __repr__(self) -> str:
+        return f"InterfaceStmt({self.name}, {self.body})"
+
+    def eval(self):
+        global STATEMENT_LIST_LEVEL
+        has_var, level, is_const = has_variable(self.name)
+        if not has_var:
+            Signal.NO_CREATE_LEVEL = True
+            ENV.append({})
+            ENV_CONSTS.append({})
+            STATEMENT_LIST_LEVEL += 1
+            self.body.eval()
+            ENV[STATEMENT_LIST_LEVEL - 1][self.name] = {
+                'env': deepcopy(ENV[STATEMENT_LIST_LEVEL]),
+                'consts_env': deepcopy(ENV_CONSTS[STATEMENT_LIST_LEVEL]),
+                'name': self.name,
+            }
+            STATEMENT_LIST_LEVEL -= 1
+            ENV.pop()
+            ENV_CONSTS.pop()
+            Signal.NO_CREATE_LEVEL = False
         else:
             raise RuntimeError(f"{self.name} is assigned")
 
@@ -869,8 +911,10 @@ class CallStmt(Stmt):
                 Signal.IN_FUNCTION = False
             else:
                 f[1].eval()
-            if init_obj:
-                Signal.RETURN_VALUE = deepcopy(init_obj)
+            if init_obj:  # initialized class
+                val = deepcopy(init_obj)
+                val['initialized'] = True
+                Signal.RETURN_VALUE = val
             Signal.RETURN = False
 
             returned = Signal.RETURN_VALUE
