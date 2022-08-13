@@ -11,6 +11,7 @@ requires python `3.10.x`!
 ```bash
 git clone https://github.com/ethosa/avoscipt
 cd avoscript
+pip install requirements.txt
 ```
 #### Launch
 ```bash
@@ -126,6 +127,11 @@ flags
   ```
   import MODULE_NAME
   import math
+  from module import MyObj, MyObj2
+  
+  var x = MyObj();
+  x::smth();
+  
   some_function_from_module();
   pow(...);  # can throw error
   # ok
@@ -162,4 +168,34 @@ flags
   echo i;
   i = "okay" if 2 > 1 else "what ..."
   echo i;
+  ```
+- `lambda`
+  ```
+  var a = (a) => {
+    echo a, "lambda is cool";
+  }
+  a(5);
+  ```
+- `class`
+  ```
+  class Animal {
+    func say() {
+    }
+  }
+  class Cat : Animal {
+    func say() {
+      echo "meow";
+    }
+  }
+  class Dog : Animal {
+    func say() {
+      echo "woof";
+    }
+  }
+  var a1 = Animal();
+  var a2 = Cat();
+  var a3 = Dog();
+  a1::say();
+  a2::say();
+  a3::say();
   ```

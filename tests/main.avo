@@ -1,15 +1,10 @@
 # main avoscript file
 import math;
 import other_module;
+from objects import Animal, Cat, Dog;
 
-
-class MyFirstClass {
-    var prop = 0;
-
-    func abc() {
-
-    }
-}
+var x = Dog();
+x::say();
 
 
 echo "Hello, world!";

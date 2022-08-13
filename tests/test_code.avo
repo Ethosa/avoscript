@@ -5,15 +5,18 @@ var s = "Hello, world!"
 var my_array = [
     x y z s 256*2*2 "Last" + " element"
     [
-        true, false, 5 > 2
+        true, false, 5 > 2, [
+            "First element from 3d arr"
+        ]
     ]
 ]
 
 echo z, z == 20, z == 6, s
-echo "array my_array", my_array
-echo "second element from 'my_array' is ", my_array[1]
-echo "first elem from [1, 2, 3] is ", [1, 2, 3][0]
-echo "third char from 'avocat-team' is ", "avocat-team"[1+1]
+echo "array my_array", my_array;
+echo "second element from 'my_array' is ", my_array[1];
+echo "first elem from [1, 2, 3] is ", [1, 2, 3][0];
+echo "third char from 'avocat-team' is ", "avocat-team"[1+1];
+echo "3d arr:", my_array[6][3][0];
 
 for var i = 0; i <= 2; ++i {
     echo "for cycle, i =", i;

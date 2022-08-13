@@ -1,34 +1,36 @@
 # -*- coding: utf-8 -*-
 from re import compile
 
-from .types import Type, Token
+from .types import TokenType, Token
 from .parser import *
 from .result import Result
 
 
 class Lexer:
     TOKEN_EXPRESSIONS = [
-        (r'"[^\n"]*"', Type.STRING),
-        (r'\'[^\n\']*\'', Type.STRING),
+        (r'"[^\n"]*"', TokenType.STRING),
+        (r'\'[^\n\']*\'', TokenType.STRING),
         (r'\#\[[\s\S]+\]\#', None),
         (r'\#[^\n]+', None),
         (r'\s', None),
-        (r'\b(if|elif|else|switch|case|while|for|break|continue|echo|var|const|func|return|import)\b', Type.RESERVED),
-        (r'\b(class|init|super|this)\b', Type.RESERVED),
-        (r'[\(\)\{\}\[\];,]', Type.RESERVED),
-        (r'(\bin\b|\bor\b|\band\b|&&|\|\||\+\=|\-\=|\*\=|\/\=|\+\+|\-\-)', Type.OPERATOR),
-        (r'>=', Type.OPERATOR),
-        (r'<=', Type.OPERATOR),
-        (r'==', Type.OPERATOR),
-        (r'::', Type.OPERATOR),
-        (r'!=', Type.OPERATOR),
-        (r'\`.+\`', Type.ID),
-        (r'\-?[0-9]+\.[0-9]+', Type.FLOAT),
-        (r'\-?[0-9]+', Type.INT),
-        (r'[\+\-\/\*\=<>~!@$%^&:\.\?]', Type.OPERATOR),
-        (r'\b(true|on|enable|false|off|disable)\b', Type.BOOL),
-        (r'[a-zA-Z_][a-zA-Z0-9_]*', Type.ID),
-        (r'\Z', Type.EOF),
+        (r'\b(if|elif|else|switch|case|while|for|break|continue)\b', TokenType.RESERVED),
+        (r'\b(echo|var|const|func|return|import|from)\b', TokenType.RESERVED),
+        (r'\b(class|init|super|this|abstract|static)\b', TokenType.RESERVED),
+        (r'[\(\)\{\}\[\];,]', TokenType.RESERVED),
+        (r'(\bin\b|\bor\b|\band\b|&&|\|\||\+\=|\-\=|\*\=|\/\=|\+\+|\-\-)', TokenType.OPERATOR),
+        (r'(=>|->)', TokenType.OPERATOR),
+        (r'>=', TokenType.OPERATOR),
+        (r'<=', TokenType.OPERATOR),
+        (r'==', TokenType.OPERATOR),
+        (r'::', TokenType.OPERATOR),
+        (r'!=', TokenType.OPERATOR),
+        (r'\`.+\`', TokenType.ID),
+        (r'\-?[0-9]+\.[0-9]+', TokenType.FLOAT),
+        (r'\-?[0-9]+', TokenType.INT),
+        (r'[\+\-\/\*\=<>~!@$%^&:\.\?]', TokenType.OPERATOR),
+        (r'\b(true|on|enable|false|off|disable)\b', TokenType.BOOL),
+        (r'[a-zA-Z_][a-zA-Z0-9_]*', TokenType.ID),
+        (r'\Z', TokenType.EOF),
     ]
 
     @staticmethod

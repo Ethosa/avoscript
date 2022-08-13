@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Tuple, NewType
 
 
-class Type(Enum):
+class TokenType(Enum):
     EOF = 0
     RESERVED = 1
     OPERATOR = 2
@@ -14,4 +14,12 @@ class Type(Enum):
     ID = 7
 
 
-Token = NewType('Token', Tuple[str, Type])
+class Type(Enum):
+    INT = 0
+    FLOAT = 1
+    BOOL = 2
+    STRING = 3
+    ARRAY = 4
+
+
+Token = NewType('Token', Tuple[str, TokenType])

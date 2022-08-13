@@ -81,7 +81,12 @@ class MyTestCase(unittest.TestCase):
         imp_parser(Lexer.lex_file('objects.avo')).value.eval()
 
     @staticmethod
-    def test_c_modules():
+    def test_c_lambda_stmt():
+        print(assign_stmt()(Lexer.lex('var a = () => {}'), 0))
+        imp_parser(Lexer.lex('var a = (a) => {echo a, "lambda is cool";}; a(5);')).value.eval()
+
+    @staticmethod
+    def test_d_modules():
         parsed = imp_parser(Lexer.lex_file('main.avo'))
         parsed.value.eval()
 

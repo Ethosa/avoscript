@@ -4,15 +4,15 @@ from pprint import pprint
 
 from .ast import *
 from .combinator import *
-from .types import Token, Type
+from .types import Token, TokenType
 
 
 def keyword(kw: str) -> Reserved:
-    return Reserved(kw, Type.RESERVED)
+    return Reserved(kw, TokenType.RESERVED)
 
 
 def operator(kw: str) -> Reserved:
-    return Reserved(kw, Type.OPERATOR)
+    return Reserved(kw, TokenType.OPERATOR)
 
 
 def process_boolean(op):
@@ -25,11 +25,11 @@ def process_boolean(op):
             raise RuntimeError(f'unknown boolean value: {op}')
 
 
-id_tag = Tag(Type.ID)
-num = Tag(Type.INT) ^ (lambda x: int(x))
-float_num = Tag(Type.FLOAT) ^ (lambda x: float(x))
-boolean = Tag(Type.BOOL) ^ process_boolean
-string = Tag(Type.STRING) ^ (lambda x: StringAST(x[1:-1]))
+id_tag = Tag(TokenType.ID)
+num = Tag(TokenType.INT) ^ (lambda x: int(x))
+float_num = Tag(TokenType.FLOAT) ^ (lambda x: float(x))
+boolean = Tag(TokenType.BOOL) ^ process_boolean
+string = Tag(TokenType.STRING) ^ (lambda x: StringAST(x[1:-1]))
 a_expr_precedence_levels = [
     ['*', '/'],
     ['+', '-', '%'],
@@ -58,6 +58,23 @@ def if_else_expr():
     return (
             Lazy(expr) + Alt(keyword('if'), operator('?')) + Lazy(expr) +
             Alt(keyword('else'), operator(':')) + Lazy(expression)
+    ) ^ process
+
+
+def lambda_stmt():
+    def process(p):
+        (((((_, args), _), _), _), statements), _ = p
+        arguments = []
+        for arg in args:
+            if arg.value[0][1] is None:
+                arguments.append(ArgumentAST(arg.value[0][0], None))
+            else:
+                arguments.append(ArgumentAST(arg.value[0][0], arg.value[0][1][1]))
+        return LambdaStmt(arguments, statements)
+
+    return (
+            keyword('(') + Rep(id_tag + Opt(operator('=') + Lazy(expression)) + Opt(keyword(','))) +
+            keyword(')') + operator('=>') + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}')
     ) ^ process
 
 
@@ -159,9 +176,16 @@ def b_expr():
 
 def brace_expr():
     def process(p):
-        (((obj), _), v), _ = p
-        return BraceAST(obj, v)
-    return (Lazy(array_expr) | Lazy(call_stmt) | string | id_tag) + keyword('[') + Lazy(expr) + keyword(']') ^ process
+        (((obj, _), v), _), v_arr = p
+        arr = []
+        for i in v_arr:
+            (_, i), _ = i.value
+            arr.append(i)
+        return BraceAST(obj, [v] + arr)
+    return (
+            (Lazy(array_expr) | Lazy(call_stmt) | string | id_or_module()) + keyword('[') +
+            Lazy(expr) + keyword(']') + Rep(keyword('[') + Lazy(expr) + keyword(']'))
+    ) ^ process
 
 
 def expr():
@@ -176,13 +200,15 @@ def expr():
 
 def class_property_stmt():
     def process(p):
-        (name, _), var = p
-        return ClassPropAST(name, var)
-    return Alt(id_tag, keyword('this')) + operator('::') + id_tag ^ process
+        ((is_super, name), _), var = p
+        if is_super is not None:
+            is_super = True
+        return ClassPropAST(name, var, is_super)
+    return Opt(keyword('super')) + Alt(id_tag, keyword('this')) + operator('::') + id_tag ^ process
 
 
 def expression():
-    return if_else_expr() | Lazy(switch_case_stmt) | expr()
+    return lambda_stmt() | if_else_expr() | Lazy(switch_case_stmt) | expr()
 
 
 # --== statements ==-- #
@@ -345,8 +371,19 @@ def foreach_stmt():
 
 def import_stmt():
     def process(p):
-        return ImportStmt(p[1])
-    return keyword('import') + id_tag ^ process
+        a, b = p
+        module = b
+        objects = None
+        if isinstance(a, tuple):
+            (((_, module), _), obj), _ = a
+            objects = [obj]
+            for i in b:
+                objects.append(i.value[0])
+        return ImportStmt(module, objects)
+    return Alt(
+        keyword('import') + id_tag,
+        keyword('from') + id_tag + keyword('import') + id_tag + Opt(keyword(',')) + Rep(id_tag + Opt(keyword(',')))
+    ) ^ process
 
 
 def switch_case_stmt():
@@ -372,12 +409,12 @@ def switch_case_stmt():
 
 def assign_class_stmt():
     def process(p):
-        ((((_, name), inherit), _), body), _ = p
+        (((((prefix, _), name), inherit), _), body), _ = p
         if inherit:
             _, inherit = inherit
-        return AssignClassStmt(name, body, inherit)
+        return AssignClassStmt(name, body, inherit, prefix)
     return (
-            keyword('class') + id_tag + Opt(operator(':') + id_tag) + keyword('{') +
+            Opt(keyword('abstract')) + keyword('class') + id_tag + Opt(operator(':') + id_tag) + keyword('{') +
             Opt(Lazy(class_body)) + keyword('}')
     ) ^ process
 

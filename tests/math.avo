@@ -5,6 +5,9 @@ const HALF_PI = PI/2
 const PI3_2 = PI*0.75;
 const TAU = PI*2
 
+class S {}
+class W : S {}
+
 func pow(a, b) {
     ## Returns a * a b times
     var result = 1;

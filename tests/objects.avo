@@ -21,7 +21,7 @@ class C : B {
     }
 
     func inc_d() {
-        this::d = this::d + 1;
+        this::d += 1;
     }
 }
 
@@ -36,3 +36,34 @@ echo x::d;
 
 var a = A();
 echo a;
+
+
+abstract class Animal {
+  func say() {
+    echo "...";
+  }
+}
+
+class Cat : Animal {
+    func say() {
+        super this::say();
+        echo "meow";
+    }
+}
+
+class Dog : Animal {
+    func say() {
+        super this::say();
+        echo "woof";
+    }
+}
+
+class Horse : Animal{}
+
+var a1 = Animal();
+var a2 = Cat();
+var a3 = Dog();
+
+a1::say();
+a2::say();
+a3::say();

@@ -128,25 +128,26 @@ class VarAST(ASTExpr):
 
 class ModuleCallAST(ASTExpr):
     def __init__(self, module_name, module_obj):
-        self.module_name = module_name
-        self.module_obj = module_obj
+        self.name = module_name
+        self.obj = module_obj
 
     def __repr__(self) -> str:
-        return f"ModuleCallAST({self.module_name}, {self.module_obj})"
+        return f"ModuleCallAST({self.name}, {self.obj})"
 
     def eval(self):
-        if self.module_name in MODULES:
-            if self.module_obj not in ENV[MODULES[self.module_name]]:
-                raise RuntimeError(f"unknown module object {self.module_obj}")
-            return ENV[MODULES[self.module_name]][self.module_obj]
+        if self.name in MODULES:
+            if self.obj not in ENV[MODULES[self.name]]:
+                raise RuntimeError(f"unknown module object {self.obj}")
+            return ENV[MODULES[self.name]][self.obj]
         else:
-            raise RuntimeError(f"unknown module {self.module_obj}")
+            raise RuntimeError(f"unknown module {self.obj}")
 
 
 class ClassPropAST(ASTExpr):
-    def __init__(self, name, prop):
+    def __init__(self, name, prop, is_super):
         self.name = name
         self.prop = prop
+        self.is_super = is_super
 
     def __repr__(self) -> str:
         return f"ClassPropAST({self.name}, {self.prop})"
@@ -158,14 +159,23 @@ class ClassPropAST(ASTExpr):
         if has_var:
             obj = ENV[level][self.name]
             result = None
-            while obj[0] and result is None:
-                if self.prop in obj[1]:
-                    result = obj[1][self.prop]
+            if self.is_super and obj['parent'] is not None:
+                obj = obj['parent']
+            if self.prop in obj['env']:
+                result = obj['env'][self.prop]
+            if self.prop in obj['consts_env']:
+                result = obj['consts_env'][self.prop]
+            while obj['parent'] and result is None:
+                obj = obj['parent']
+                if self.prop in obj['env']:
+                    result = obj['env'][self.prop]
                     break
-                obj = obj[0]
+                if self.prop in obj['env_consts']:
+                    result = obj['env_consts'][self.prop]
+                    break
             if result is not None:
                 return result
-            raise RuntimeError(f"unknown property {self.prop}")
+            raise RuntimeError(f"unknown property {self.prop} of {self.name}")
         else:
             raise RuntimeError(f"unknown class {self.name}")
 
@@ -195,14 +205,16 @@ class BraceAST(ASTExpr):
         return f"BraceAST({self.v})"
 
     def eval(self):
+        result = None
         if isinstance(self.obj, str):
-            return VarAST(self.obj).eval()[self.v.eval()]
-        elif isinstance(self.obj, ArrayAST):
-            return self.obj.eval()[self.v.eval()]
-        elif isinstance(self.obj, StringAST):
-            return self.obj.eval()[self.v.eval()]
-        elif isinstance(self.obj, CallStmt):
-            return self.obj.eval()[self.v.eval()]
+            result = VarAST(self.obj).eval()
+        elif isinstance(self.obj, (ArrayAST, StringAST, CallStmt, ModuleCallAST, ClassPropAST)):
+            result = self.obj.eval()
+        if result is not None:
+            for i in self.v:
+                result = result[i.eval()]
+        if result is not None:
+            return result
         raise RuntimeError(f"{self.obj.eval()} isn't indexed")
 
 
@@ -389,8 +401,8 @@ class StmtList(Stmt):
             STATEMENT_LIST_LEVEL += 1
             ENV.append({})
             ENV_CONSTS.append({})
-        if Signal.CREATE_BACK_LEVEL:
-            Signal.BACK_LEVEL = STATEMENT_LIST_LEVEL
+        if Signal.CREATE_BACK_LEVEL and Signal.BACK_LEVEL is None:
+            Signal.BACK_LEVEL = STATEMENT_LIST_LEVEL-1
         # Arguments (if in function)
         if Signal.IN_FUNCTION and Signal.ARGUMENTS:
             for n, v in Signal.ARGUMENTS.items():
@@ -408,13 +420,14 @@ class StmtList(Stmt):
                 break
             if Signal.RETURN and Signal.IN_FUNCTION:
                 break
-        if not Signal.NO_CREATE_LEVEL:
+        if not Signal.NO_CREATE_LEVEL and STATEMENT_LIST_LEVEL not in MODULES.values():
             if not Signal.CREATE_BACK_LEVEL or Signal.BACK_LEVEL != STATEMENT_LIST_LEVEL:
                 STATEMENT_LIST_LEVEL -= 1
                 ENV.pop()
                 ENV_CONSTS.pop()
         if Signal.CREATE_BACK_LEVEL and Signal.BACK_LEVEL == STATEMENT_LIST_LEVEL:
             Signal.CREATE_BACK_LEVEL = False
+            Signal.BACK_LEVEL = None
             STATEMENT_LIST_LEVEL += 1
             ENV.append({})
             ENV_CONSTS.append({})
@@ -439,9 +452,29 @@ class AssignStmt(Stmt):
     def __repr__(self) -> str:
         return f"AssignStmt({self.name}, {self.a_expr})"
 
+    def __assign_operation(self, val):
+        if not self.is_assign:
+            name = self.name
+            if isinstance(name, str):
+                name = VarAST(name)
+            match self.assign_op:
+                case '*=':
+                    val = BinOpAST('*', name, val)
+                case '/=':
+                    val = BinOpAST('/', name, val)
+                case '+=':
+                    val = BinOpAST('+', name, val)
+                case '-=':
+                    val = BinOpAST('-', name, val)
+                case '=':
+                    pass
+                case _:
+                    raise RuntimeError(f"unknown operator {self.assign_op}")
+        return val
+
     def eval(self):
         has_var, level, is_const = has_variable(self.name)
-        val = self.a_expr
+        val = self.__assign_operation(self.a_expr)
         if self.is_assign:
             # Assign var/const
             if self.assign_op != '=':
@@ -453,19 +486,6 @@ class AssignStmt(Stmt):
             else:
                 ENV[STATEMENT_LIST_LEVEL][self.name] = val.eval()
         elif has_var:
-            match self.assign_op:
-                case '*=':
-                    val = BinOpAST('*', VarAST(self.name), val)
-                case '/=':
-                    val = BinOpAST('/', VarAST(self.name), val)
-                case '+=':
-                    val = BinOpAST('+', VarAST(self.name), val)
-                case '-=':
-                    val = BinOpAST('-', VarAST(self.name), val)
-                case '=':
-                    pass
-                case _:
-                    raise RuntimeError(f"unknown operator {self.assign_op}")
             # Reassign
             if is_const:
                 ENV_CONSTS[level][self.name] = val.eval()
@@ -473,14 +493,14 @@ class AssignStmt(Stmt):
                 ENV[level][self.name] = val.eval()
         elif isinstance(self.name, ModuleCallAST):
             module = self.name
-            if module.module_name not in MODULES:
-                raise RuntimeError(f"unknown module {module.module_name}")
-            if module.module_obj in ENV[MODULES[module.module_name]]:
-                ENV[MODULES[module.module_name]][module.module_obj] = val.eval()
-            elif module.module_obj in ENV_CONSTS[MODULES[module.module_name]]:
-                ENV_CONSTS[MODULES[module.module_name]][module.module_obj] = val.eval()
+            if module.name not in MODULES:
+                raise RuntimeError(f"unknown module {module.name}")
+            if module.obj in ENV[MODULES[module.name]]:
+                ENV[MODULES[module.name]][module.obj] = val.eval()
+            elif module.obj in ENV_CONSTS[MODULES[module.name]]:
+                ENV_CONSTS[MODULES[module.name]][module.obj] = val.eval()
             else:
-                raise RuntimeError(f"unknown module property {module.module_obj}")
+                raise RuntimeError(f"unknown module property {module.obj}")
         elif isinstance(self.name, ClassPropAST):
             obj = self.name
             if Signal.IN_CLASS and Signal.CURRENT_CLASS and obj.name == 'this':
@@ -488,9 +508,21 @@ class AssignStmt(Stmt):
             has_var, level, is_const = has_variable(obj.name)
             if has_var and not is_const:
                 var = ENV[level][obj.name]
-                while var[0]:
-                    if obj.prop in var[1]:
-                        var[1][obj.prop] = val.eval()
+                if obj.is_super and var['parent'] is not None:
+                    var = var['parent']
+                if obj.prop in var['env']:
+                    var['env'][obj.prop] = val.eval()
+                    return
+                if obj.prop in var['consts_env']:
+                    var['consts_env'][obj.prop] = val.eval()
+                    return
+                while var['parent']:
+                    var = var['parent']
+                    if obj.prop in var['env']:
+                        var['env'][obj.prop] = val.eval()
+                        return
+                    if obj.prop in var['consts_env']:
+                        var['consts_env'][obj.prop] = val.eval()
                         return
                 raise RuntimeError(f"unknown class property")
             else:
@@ -500,22 +532,22 @@ class AssignStmt(Stmt):
 
 
 class AssignClassStmt(Stmt):
-    def __init__(self, name, body, inherit):
+    def __init__(self, name, body, inherit, prefix):
         self.name = name
         self.body = body
         self.inherit = inherit
+        self.prefix = prefix
 
     def __repr__(self) -> str:
-        return f"AssignClassStmt({self.name}, {self.inherit}, {self.body})"
+        return f"AssignClassStmt({self.prefix + ' ' if self.prefix else ''}{self.name}, {self.inherit}, {self.body})"
 
     def eval(self):
         global STATEMENT_LIST_LEVEL
         has_var, level, is_const = has_variable(self.name)
         if not has_var:
-            ENV[STATEMENT_LIST_LEVEL][self.name] = (self.inherit, {})
+            Signal.NO_CREATE_LEVEL = True
             ENV.append({})
             ENV_CONSTS.append({})
-            Signal.NO_CREATE_LEVEL = True
             STATEMENT_LIST_LEVEL += 1
             self.body.eval()
             if self.inherit:
@@ -524,13 +556,45 @@ class AssignClassStmt(Stmt):
                     self.inherit = ENV[level][self.inherit]
                 else:
                     raise RuntimeError(f"unknown inherit class {self.inherit}")
-            ENV[STATEMENT_LIST_LEVEL - 1][self.name] = (
-                self.inherit, ENV[STATEMENT_LIST_LEVEL], ENV_CONSTS[STATEMENT_LIST_LEVEL], self.name
-            )
+            ENV[STATEMENT_LIST_LEVEL - 1][self.name] = {
+                'parent': self.inherit,
+                'env': deepcopy(ENV[STATEMENT_LIST_LEVEL]),
+                'consts_env': deepcopy(ENV_CONSTS[STATEMENT_LIST_LEVEL]),
+                'name': self.name,
+                'prefix': self.prefix
+            }
+            parent = self.inherit
+            must_have_data = []
+            if parent:
+                # what should be implemented?
+                prefix = parent['prefix']
+                if prefix == 'abstract':
+                    must_have_data += [i for i in parent['env'].keys()]
+                    must_have_data += [i for i in parent['consts_env'].keys()]
+                while parent['parent']:
+                    parent = parent['parent']
+                    if prefix == 'abstract':
+                        must_have_data += [i for i in parent['env'].keys()]
+                        must_have_data += [i for i in parent['consts_env'].keys()]
+                # what is implemented
+                parent = ENV[STATEMENT_LIST_LEVEL - 1][self.name]
+                prefix = parent['prefix']
+                for data in must_have_data:
+                    if (data in parent['env'] or data in parent['consts_env']) and prefix != 'abstract':
+                        must_have_data.remove(data)
+                        continue
+                    while parent['parent']:
+                        parent = parent['parent']
+                        prefix = parent['prefix']
+                        if (data in parent['env'] or data in parent['consts_env']) and prefix != 'abstract':
+                            must_have_data.remove(data)
+                            break
             STATEMENT_LIST_LEVEL -= 1
             ENV.pop()
             ENV_CONSTS.pop()
             Signal.NO_CREATE_LEVEL = False
+            if len(must_have_data) > 0:
+                print(f"[WARNING]: {', '.join(must_have_data)} isn't implemented in {self.name}")
         else:
             raise RuntimeError(f"{self.name} is assigned")
 
@@ -744,6 +808,18 @@ class FuncStmt(Stmt):
             ENV[STATEMENT_LIST_LEVEL][self.name] = (self.args, self.body)
 
 
+class LambdaStmt(Stmt):
+    def __init__(self, args, body):
+        self.args = args
+        self.body = body
+
+    def __repr__(self) -> str:
+        return f"LambdaStmt({self.args}, {self.body})"
+
+    def eval(self):
+        return self.args, self.body
+
+
 class CallStmt(Stmt):
     def __init__(self, name, args):
         self.name = name
@@ -758,13 +834,13 @@ class CallStmt(Stmt):
         init_obj = None
         if has_var and not is_const:
             f = ENV[level][self.name]
-            if len(f) == 4:  # class
+            if isinstance(f, dict):  # class
                 if not Signal.IN_CLASS:
                     Signal.CURRENT_CLASS = self.name
                 Signal.IN_CLASS = True
                 init_obj = f
-                if None in f[1]:
-                    f = f[1][None]
+                if None in f['env']:
+                    f = f['env'][None]
                 else:
                     f = ([], StmtList([]))
         elif isinstance(self.name, ModuleCallAST):
@@ -816,11 +892,12 @@ class ReturnStmt(Stmt):
 
 
 class ImportStmt(Stmt):
-    def __init__(self, module_name):
+    def __init__(self, module_name, objects):
         self.module_name = module_name
+        self.objects = objects
 
     def __repr__(self) -> str:
-        return f"ImportStmt({self.module_name})"
+        return f"ImportStmt({self.module_name}, {self.objects})"
 
     def eval(self):
         from src.lexer import stmt_list, Lexer
@@ -832,3 +909,9 @@ class ImportStmt(Stmt):
             Signal.CREATE_BACK_LEVEL = True
             MODULES[self.module_name] = STATEMENT_LIST_LEVEL + 1
             statements.value.eval()
+        if self.objects is not None:
+            env = [i for i in ENV[MODULES[self.module_name]].keys()]
+            env_c = [i for i in ENV_CONSTS[MODULES[self.module_name]].keys()]
+            for k in env + env_c:
+                if k not in self.objects:
+                    del ENV[MODULES[self.module_name]][k]
