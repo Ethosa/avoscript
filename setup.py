@@ -16,7 +16,7 @@ setup(
     long_description_content_type="text/markdown",
     author="Ethosa",
     author_email="social.ethosa@gmail.com",
-    version="0.2.1",
+    version="0.2.2",
     url="https://github.com/ethosa/avoscript",
     install_requires=[
         "colorama",
