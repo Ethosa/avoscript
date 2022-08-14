@@ -14,8 +14,19 @@ echo(length([0, 1, 2]) - 3);
 func sort(arr) {
     var len = length(arr);
     echo(len);
-    for var i = 0; i < len; ++i {
-
+    var offset = 0;
+    while offset < len {
+        for var i = 0; i < len - offset; ++i {
+            var j = i+1;
+            if j < len {
+                if arr[j] < arr[i] {
+                    var tmp = arr[i];
+                    arr[i] = arr[j];
+                    arr[j] = tmp;
+                }
+            }
+        }
+        ++offset;
     }
     return arr;
 }

@@ -118,6 +118,9 @@ def a_expr_group():
 
 def a_expr_term():
     return (
+            module_obj_expr() |
+            brace_expr() |
+            Lazy(array_expr) |
             Lazy(read_stmt) |
             Lazy(call_stmt) |
             Lazy(class_property_stmt) |
@@ -210,9 +213,6 @@ def brace_expr():
 
 def expr():
     return (
-            module_obj_expr() |
-            brace_expr() |
-            Lazy(array_expr) |
             b_expr() |
             a_expr()
     )

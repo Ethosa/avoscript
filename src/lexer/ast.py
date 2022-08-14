@@ -506,7 +506,7 @@ class AssignStmt(Stmt):
                 for i in obj.v[:-1]:
                     result = result[i.eval()]
             if result is not None:
-                result[obj.v[-1]] = val.eval()
+                result[obj.v[-1].eval()] = val.eval()
         elif isinstance(self.name, ModuleCallAST):
             module = self.name
             if module.name not in MODULES:
@@ -875,13 +875,13 @@ class BuiltInFuncStmt(Stmt):
         val = None
         match self.name:
             case 'int':
-                val = int(self.arg[0])
+                val = int(self.arg[0].eval())
             case 'float':
-                val = float(self.arg[0])
+                val = float(self.arg[0].eval())
             case 'string':
-                val = str(self.arg[0])
+                val = str(self.arg[0].eval())
             case 'length':
-                val = len(self.arg[0])
+                val = len(self.arg[0].eval())
             case 'range':
                 val = range(*[i.eval() for i in self.arg])
         return val
