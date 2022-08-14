@@ -15,7 +15,7 @@ setup(
     long_description_content_type="text/markdown",
     author="Ethosa",
     author_email="social.ethosa@gmail.com",
-    version="0.2.4",
+    version="0.3.3",
     url="https://github.com/ethosa/avoscript",
     install_requires=[
         "colorama",
@@ -33,5 +33,11 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3.10',
         'Topic :: Software Development',
-    ]
+    ],
+    scripts=['avos.py'],
+    entry_points={
+        'console_script': [
+            'avos = avos:main'
+        ]
+    }
 )

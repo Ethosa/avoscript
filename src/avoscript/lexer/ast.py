@@ -47,6 +47,7 @@ class Signal:
     KW_ARGUMENTS = None
     CURRENT_CLASS = None
     ERROR = None
+    NEED_FREE = True
 
     @staticmethod
     def refresh():
@@ -449,7 +450,8 @@ class StmtList(Stmt):
                 Signal.ERROR = e
             if Signal.ERROR is not None:
                 if not Signal.IN_TRY:
-                    raise RuntimeError(Signal.ERROR)
+                    print(f'RuntimeError: {Signal.ERROR}')
+                    exit(0)
                 break
             if (Signal.BREAK or Signal.CONTINUE) and Signal.IN_CYCLE:
                 break
@@ -1094,7 +1096,7 @@ class EOFStmt(Stmt):
 
     def eval(self):
         global ENV, ENV_CONSTS, MODULES, STATEMENT_LIST_LEVEL
-        if Signal.IN_MAIN:
+        if Signal.IN_MAIN or not Signal.NEED_FREE:
             return
         ENV = []
         ENV_CONSTS = []
