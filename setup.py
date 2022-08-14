@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from setuptools import find_packages
-from distutils.core import setup
+from setuptools import find_packages, setup
 from os.path import exists
 
 
@@ -16,13 +15,14 @@ setup(
     long_description_content_type="text/markdown",
     author="Ethosa",
     author_email="social.ethosa@gmail.com",
-    version="0.2.2",
+    version="0.2.4",
     url="https://github.com/ethosa/avoscript",
     install_requires=[
         "colorama",
         "equality",
     ],
-    packages=find_packages(),
+    package_dir={'': 'src'},
+    packages=find_packages('src'),
     python_requires='>=3.10',
     keywords=['language', 'avocat', 'avoscript', 'script language'],
     classifiers=[

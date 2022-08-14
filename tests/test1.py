@@ -1,4 +1,4 @@
-from src.lexer import *
+from src.avoscript import *
 import unittest
 
 
@@ -93,6 +93,11 @@ class MyTestCase(unittest.TestCase):
     @staticmethod
     def test_e_builtins():
         parsed = imp_parser(Lexer.lex_file('builtins_test.avo'))
+        parsed.value.eval()
+
+    @staticmethod
+    def test_f_try_catch_stmt():
+        parsed = imp_parser(Lexer.lex_file('try_catch.avo'))
         parsed.value.eval()
 
 

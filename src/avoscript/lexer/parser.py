@@ -545,6 +545,16 @@ def interface_body_stmt():
     )
 
 
+def try_catch_stmt():
+    def process(p):
+        ((((((_, try_body), _), _), e_name), _), catch_body), _ = p
+        return TryCatchStmt(try_body, e_name, catch_body)
+    return (
+            keyword('try') + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}') +
+            keyword('catch') + id_tag + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}')
+    ) ^ process
+
+
 def stmt():
     return (
             assign_class_stmt() |
@@ -552,6 +562,7 @@ def stmt():
             func_stmt() |
             call_stmt() |
             for_stmt() |
+            try_catch_stmt() |
             echo_stmt() |
             foreach_stmt() |
             assign_stmt() |
@@ -565,7 +576,8 @@ def stmt():
             block_stmt() |
             return_stmt() |
             import_stmt() |
-            expression()
+            expression() |
+            (Tag(TokenType.EOF) ^ (lambda x: EOFStmt()))
     )
 
 

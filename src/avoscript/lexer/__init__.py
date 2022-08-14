@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
+from typing import List
 from re import compile
 
 from .types import TokenType, Token
-from .parser import *
-from .result import Result
 
 
 class Lexer:
@@ -32,7 +31,6 @@ class Lexer:
         (r'[\+\-\/\*\=<>~!@$%^&:\.\?]', TokenType.OPERATOR),
         (r'\b(true|on|enable|false|off|disable)\b', TokenType.BOOL),
         (r'[a-zA-Z_][a-zA-Z0-9_]*', TokenType.ID),
-        (r'\Z', TokenType.EOF),
     ]
 
     @staticmethod
@@ -58,7 +56,7 @@ class Lexer:
             else:
                 print(f"error at {i} ({src[i]})")
                 exit(-1)
-        return res
+        return res + [(None, TokenType.EOF)]
 
     @staticmethod
     def lex_file(path_to_file: str) -> List[Token]:

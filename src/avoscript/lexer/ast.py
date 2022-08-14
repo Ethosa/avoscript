@@ -6,6 +6,7 @@ from copy import deepcopy
 
 from equality import AnyBase
 
+
 ENV = []
 ENV_CONSTS = []
 STATEMENT_LIST_LEVEL = -1
@@ -33,6 +34,8 @@ class Signal:
     IN_FOR_CYCLE = False
     IN_FUNCTION = False
     IN_CLASS = False
+    IN_TRY = False
+    IN_MAIN = False
     BREAK = False
     CONTINUE = False
     RETURN = False
@@ -44,6 +47,26 @@ class Signal:
     KW_ARGUMENTS = None
     CURRENT_CLASS = None
     ERROR = None
+
+    @staticmethod
+    def refresh():
+        Signal.IN_CYCLE = False
+        Signal.IN_FOR_CYCLE = False
+        Signal.IN_FUNCTION = False
+        Signal.IN_CLASS = False
+        Signal.IN_TRY = False
+        Signal.IN_MAIN = False
+        Signal.BREAK = False
+        Signal.CONTINUE = False
+        Signal.RETURN = False
+        Signal.NO_CREATE_LEVEL = False
+        Signal.CREATE_BACK_LEVEL = False
+        Signal.BACK_LEVEL = None
+        Signal.RETURN_VALUE = None
+        Signal.ARGUMENTS = None
+        Signal.KW_ARGUMENTS = None
+        Signal.CURRENT_CLASS = None
+        Signal.ERROR = None
 
 
 # --== AST ==-- #
@@ -124,7 +147,7 @@ class VarAST(ASTExpr):
                 return ENV_CONSTS[level][self.var_name]
             else:
                 return ENV[level][self.var_name]
-        raise RuntimeError(f'{self.var_name} was used before assign')
+        Signal.ERROR = f'{self.var_name} was used before assign'
 
 
 class ModuleCallAST(ASTExpr):
@@ -138,10 +161,10 @@ class ModuleCallAST(ASTExpr):
     def eval(self):
         if self.name in MODULES:
             if self.obj not in ENV[MODULES[self.name]]:
-                raise RuntimeError(f"unknown module object {self.obj}")
+                Signal.ERROR = f"unknown module object {self.obj}"
+                return
             return ENV[MODULES[self.name]][self.obj]
-        else:
-            raise RuntimeError(f"unknown module {self.obj}")
+        Signal.ERROR = f"unknown module {self.obj}"
 
 
 class ClassPropAST(ASTExpr):
@@ -178,9 +201,9 @@ class ClassPropAST(ASTExpr):
                 if obj['prefix'] == 'abstract':
                     print(f'[WARNING]: {self.prop} is abstract property')
                 return result
-            raise RuntimeError(f"unknown property {self.prop} of {self.name}")
+            Signal.ERROR = f"unknown property {self.prop} of {self.name}"
         else:
-            raise RuntimeError(f"unknown class {self.name}")
+            Signal.ERROR = f"unknown class {self.name}"
 
 
 class ArgumentAST(ASTExpr):
@@ -218,7 +241,7 @@ class BraceAST(ASTExpr):
                 result = result[i.eval()]
         if result is not None:
             return result
-        raise RuntimeError(f"{self.obj.eval()} isn't indexed")
+        Signal.ERROR = f"{self.obj.eval()} isn't indexed"
 
 
 class BinOpAST(ASTExpr):
@@ -245,7 +268,7 @@ class BinOpAST(ASTExpr):
             case '%':
                 return lval % rval
             case _:
-                raise RuntimeError('unknown operation')
+                Signal.ERROR = f'unknown operation {self.op}'
 
 
 class UnaryOpAST(ASTExpr):
@@ -275,7 +298,7 @@ class UnaryOpAST(ASTExpr):
             case '-':
                 return -(self.expr.eval())
             case _:
-                raise RuntimeError(f"unknown unary operation: {self.op}")
+                Signal.ERROR = f"unknown unary operation: {self.op}"
 
 
 class TernaryOpAST(ASTExpr):
@@ -293,14 +316,12 @@ class TernaryOpAST(ASTExpr):
         if self.op1 == '?' and self.op2 == ':':
             if self.first.eval():
                 return self.second.eval()
-            else:
-                return self.third.eval()
+            return self.third.eval()
         elif self.op1 == 'if' and self.op2 == 'else':
             if self.second.eval():
                 return self.first.eval()
-            else:
-                return self.third.eval()
-        raise RuntimeError(f"unknown ternary operator {self.op1}, {self.op2}")
+            return self.third.eval()
+        Signal.ERROR = f"unknown ternary operator {self.op1}, {self.op2}"
 
 
 # --== Binary operations ==-- #
@@ -335,7 +356,7 @@ class RelativeOp(BinOpExpr):
             case '<=':
                 return lval <= rval
             case _:
-                raise RuntimeError('unknown operation')
+                Signal.ERROR = f'unknown operation {self.op}'
 
 
 class AndOp(BinOpExpr):
@@ -400,6 +421,10 @@ class StmtList(Stmt):
 
     def eval(self):
         global STATEMENT_LIST_LEVEL
+        in_main = False
+        if not Signal.IN_MAIN:
+            Signal.IN_MAIN = True
+            in_main = True
         if not Signal.NO_CREATE_LEVEL:
             STATEMENT_LIST_LEVEL += 1
             ENV.append({})
@@ -418,7 +443,14 @@ class StmtList(Stmt):
         # Statements
         result = None
         for stmt in self.statements:
-            result = stmt.eval()
+            try:
+                result = stmt.eval()
+            except Exception as e:
+                Signal.ERROR = e
+            if Signal.ERROR is not None:
+                if not Signal.IN_TRY:
+                    raise RuntimeError(Signal.ERROR)
+                break
             if (Signal.BREAK or Signal.CONTINUE) and Signal.IN_CYCLE:
                 break
             if Signal.RETURN and Signal.IN_FUNCTION:
@@ -434,6 +466,11 @@ class StmtList(Stmt):
             STATEMENT_LIST_LEVEL += 1
             ENV.append({})
             ENV_CONSTS.append({})
+        if Signal.IN_MAIN and in_main:
+            Signal.IN_MAIN = False
+            if isinstance(self.statements[-1], EOFStmt):
+                self.statements[-1].eval()
+            return
         return result
 
 
@@ -472,7 +509,7 @@ class AssignStmt(Stmt):
                 case '=':
                     pass
                 case _:
-                    raise RuntimeError(f"unknown operator {self.assign_op}")
+                    Signal.ERROR = f"unknown operator {self.assign_op}"
         return val
 
     def eval(self):
@@ -481,9 +518,11 @@ class AssignStmt(Stmt):
         if self.is_assign:
             # Assign var/const
             if self.assign_op != '=':
-                raise RuntimeError(f"{self.name} isn't assigned")
+                Signal.ERROR = f"{self.name} isn't assigned"
+                return
             if has_var and level == STATEMENT_LIST_LEVEL:
-                raise RuntimeError(f"{self.name} is assigned")
+                Signal.ERROR = f"{self.name} is assigned"
+                return
             if self.is_const:
                 ENV_CONSTS[STATEMENT_LIST_LEVEL][self.name] = val.eval()
             else:
@@ -509,13 +548,15 @@ class AssignStmt(Stmt):
         elif isinstance(self.name, ModuleCallAST):
             module = self.name
             if module.name not in MODULES:
-                raise RuntimeError(f"unknown module {module.name}")
+                Signal.ERROR = f"unknown module {module.name}"
+                return
             if module.obj in ENV[MODULES[module.name]]:
                 ENV[MODULES[module.name]][module.obj] = val.eval()
             elif module.obj in ENV_CONSTS[MODULES[module.name]]:
                 ENV_CONSTS[MODULES[module.name]][module.obj] = val.eval()
             else:
-                raise RuntimeError(f"unknown module property {module.obj}")
+                Signal.ERROR = f"unknown module property {module.obj}"
+                return
         elif isinstance(self.name, ClassPropAST):
             obj = self.name
             if Signal.IN_CLASS and Signal.CURRENT_CLASS and obj.name == 'this':
@@ -539,11 +580,11 @@ class AssignStmt(Stmt):
                     if obj.prop in var['consts_env']:
                         var['consts_env'][obj.prop] = val.eval()
                         return
-                raise RuntimeError(f"unknown class property")
+                Signal.ERROR = f"unknown property {obj.prop} in class {obj.name}"
             else:
-                raise RuntimeError(f"unknown class {obj.name}")
+                Signal.ERROR = f"unknown class {obj.name}"
         else:
-            raise RuntimeError(f"{self.name} isn't assigned")
+            Signal.ERROR = f"{self.name} isn't assigned"
 
 
 class AssignClassStmt(Stmt):
@@ -571,7 +612,8 @@ class AssignClassStmt(Stmt):
                 if has_var:
                     self.inherit = ENV[level][self.inherit]
                 else:
-                    raise RuntimeError(f"unknown inherit class {self.inherit}")
+                    Signal.ERROR = f"unknown inherit class {self.inherit}"
+                    return
             must_have_data = []
             # implemented interfaces
             for interface in self.interfaces:
@@ -581,7 +623,8 @@ class AssignClassStmt(Stmt):
                     must_have_data += [i for i in interface['env'].keys() if i not in must_have_data]
                     must_have_data += [i for i in interface['consts_env'].keys() if i not in must_have_data]
                 else:
-                    raise RuntimeError(f"unknown interface {interface} of class {self.name}")
+                    Signal.ERROR = f"unknown interface {interface} of class {self.name}"
+                    return
             ENV[STATEMENT_LIST_LEVEL - 1][self.name] = {
                 'parent': self.inherit,
                 'env': deepcopy(ENV[STATEMENT_LIST_LEVEL]),
@@ -624,7 +667,8 @@ class AssignClassStmt(Stmt):
             if len(must_have_data) > 0:
                 print(f"[WARNING]: {', '.join(must_have_data)} isn't implemented in {self.name}")
         else:
-            raise RuntimeError(f"{self.name} is assigned")
+            print(has_var, level, ENV[level][self.name])
+            Signal.ERROR = f"class {self.name} is assigned"
 
 
 class InterfaceStmt(Stmt):
@@ -654,7 +698,7 @@ class InterfaceStmt(Stmt):
             ENV_CONSTS.pop()
             Signal.NO_CREATE_LEVEL = False
         else:
-            raise RuntimeError(f"{self.name} is assigned")
+            Signal.ERROR = f"{self.name} is assigned"
 
 
 class InitClassStmt(Stmt):
@@ -667,7 +711,8 @@ class InitClassStmt(Stmt):
 
     def eval(self):
         if None in ENV[STATEMENT_LIST_LEVEL]:
-            raise RuntimeError("this class equals init function")
+            Signal.ERROR = "this class equals init function"
+            return
         ENV[STATEMENT_LIST_LEVEL][None] = (self.args, self.body)
 
 
@@ -821,6 +866,33 @@ class ContinueStmt(Stmt):
 
     def eval(self):
         Signal.CONTINUE = True
+
+
+class TryCatchStmt(Stmt):
+    def __init__(self, try_body, e_name, catch_body):
+        self.try_body = try_body
+        self.e_name = e_name
+        self.catch_body = catch_body
+
+    def __repr__(self) -> str:
+        return f"TryCatchStmt({self.try_body}, {self.e_name}, {self.catch_body})"
+
+    def eval(self):
+        global STATEMENT_LIST_LEVEL
+        Signal.IN_TRY = True
+        self.try_body.eval()
+        Signal.IN_TRY = False
+        if Signal.ERROR is not None:
+            Signal.NO_CREATE_LEVEL = True
+            ENV.append({})
+            ENV_CONSTS.append({})
+            STATEMENT_LIST_LEVEL += 1
+            ENV[STATEMENT_LIST_LEVEL][self.e_name] = Signal.ERROR
+            Signal.ERROR = None
+            self.catch_body.eval()
+            STATEMENT_LIST_LEVEL -= 1
+            ENV.pop()
+            ENV_CONSTS.pop()
 
 
 class EchoStmt(Stmt):
@@ -998,7 +1070,8 @@ class ImportStmt(Stmt):
         return f"ImportStmt({self.module_name}, {self.objects})"
 
     def eval(self):
-        from src.lexer import stmt_list, Lexer
+        from .parser import stmt_list
+        from . import Lexer
         module_name = self.module_name + '.avo'
         if not exists(module_name) or not isfile(module_name):
             raise RuntimeError(f"can't find module {module_name}")
@@ -1013,3 +1086,18 @@ class ImportStmt(Stmt):
             for k in env + env_c:
                 if k not in self.objects:
                     del ENV[MODULES[self.module_name]][k]
+
+
+class EOFStmt(Stmt):
+    def __repr__(self) -> str:
+        return "EOFStmt()"
+
+    def eval(self):
+        global ENV, ENV_CONSTS, MODULES, STATEMENT_LIST_LEVEL
+        if Signal.IN_MAIN:
+            return
+        ENV = []
+        ENV_CONSTS = []
+        MODULES = {}
+        STATEMENT_LIST_LEVEL = -1
+        Signal.refresh()
