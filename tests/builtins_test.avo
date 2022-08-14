@@ -9,21 +9,19 @@ for i in range(min, max, step) {
     echo(min, max, step, i);
 }
 
-echo(length([0, 1, 2]) - 3);
+echo(string(4) + string(0));
+echo(int("4") + int("5"));
 
 func sort(arr) {
     var len = length(arr);
-    echo(len);
     var offset = 0;
     while offset < len {
         for var i = 0; i < len - offset; ++i {
             var j = i+1;
-            if j < len {
-                if arr[j] < arr[i] {
-                    var tmp = arr[i];
-                    arr[i] = arr[j];
-                    arr[j] = tmp;
-                }
+            if j < len and arr[j] < arr[i] {
+                var tmp = arr[i];
+                arr[i] = arr[j];
+                arr[j] = tmp;
             }
         }
         ++offset;

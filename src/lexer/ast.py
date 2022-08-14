@@ -478,7 +478,6 @@ class AssignStmt(Stmt):
     def eval(self):
         has_var, level, is_const = has_variable(self.name)
         val = self.__assign_operation(self.a_expr)
-        print(val)
         if self.is_assign:
             # Assign var/const
             if self.assign_op != '=':
@@ -573,8 +572,8 @@ class AssignClassStmt(Stmt):
                     self.inherit = ENV[level][self.inherit]
                 else:
                     raise RuntimeError(f"unknown inherit class {self.inherit}")
-            parent = self.inherit
             must_have_data = []
+            # implemented interfaces
             for interface in self.interfaces:
                 h, l, c = has_variable(interface)
                 if h:
@@ -591,6 +590,7 @@ class AssignClassStmt(Stmt):
                 'prefix': self.prefix,
                 'must_have_data': must_have_data
             }
+            parent = self.inherit
             if parent:
                 # what should be implemented?
                 prefix = parent['prefix']
@@ -606,15 +606,15 @@ class AssignClassStmt(Stmt):
                         must_have_data += [i for i in parent['consts_env'].keys() if i not in must_have_data]
             # what is implemented
             for data in must_have_data:
-                parent = ENV[STATEMENT_LIST_LEVEL - 1][self.name]
-                prefix = parent['prefix']
-                if (data in parent['env'] or data in parent['consts_env']) and prefix != 'abstract':
+                obj = ENV[STATEMENT_LIST_LEVEL - 1][self.name]
+                prefix = obj['prefix']
+                if (data in obj['env'] or data in obj['consts_env']) and prefix != 'abstract':
                     must_have_data.remove(data)
                     continue
-                while parent['parent']:
-                    parent = parent['parent']
-                    prefix = parent['prefix']
-                    if (data in parent['env'] or data in parent['consts_env']) and prefix != 'abstract':
+                while obj['parent']:
+                    obj = obj['parent']
+                    prefix = obj['prefix']
+                    if (data in obj['env'] or data in obj['consts_env']) and prefix != 'abstract':
                         must_have_data.remove(data)
                         break
             STATEMENT_LIST_LEVEL -= 1
