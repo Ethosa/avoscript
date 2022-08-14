@@ -1,7 +1,7 @@
 <div align="center">
 
 # AVOScript
-![carbon (3)](https://user-images.githubusercontent.com/49402667/184535093-ffdaa33d-b476-4096-8bb1-d2506f4064a3.svg)
+[![carbon (3)](https://user-images.githubusercontent.com/49402667/184535093-ffdaa33d-b476-4096-8bb1-d2506f4064a3.svg)](https://github.com/Ethosa/avoscript/wiki/Available-Statements)
 ### little language just for fun
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/avoscript?style=flat-square)](https://pypi.project/avoscript)
 [![PyPI](https://img.shields.io/pypi/v/avoscript?style=flat-square)](https://pypi.org/project/avoscript)
