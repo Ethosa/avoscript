@@ -478,6 +478,7 @@ class AssignStmt(Stmt):
     def eval(self):
         has_var, level, is_const = has_variable(self.name)
         val = self.__assign_operation(self.a_expr)
+        print(val)
         if self.is_assign:
             # Assign var/const
             if self.assign_op != '=':
@@ -494,6 +495,18 @@ class AssignStmt(Stmt):
                 ENV_CONSTS[level][self.name] = val.eval()
             else:
                 ENV[level][self.name] = val.eval()
+        elif isinstance(self.name, BraceAST):
+            result = None
+            obj = self.name
+            if isinstance(obj.obj, str):
+                result = VarAST(obj.obj).eval()
+            elif isinstance(obj.obj, (ArrayAST, StringAST, CallStmt, ModuleCallAST, ClassPropAST)):
+                result = obj.obj.eval()
+            if result is not None:
+                for i in obj.v[:-1]:
+                    result = result[i.eval()]
+            if result is not None:
+                result[obj.v[-1]] = val.eval()
         elif isinstance(self.name, ModuleCallAST):
             module = self.name
             if module.name not in MODULES:
@@ -848,6 +861,30 @@ class ReadStmt(Stmt):
             return input(self.text.eval())
         elif isinstance(self.text, str):
             return self.text
+
+
+class BuiltInFuncStmt(Stmt):
+    def __init__(self, name, arg):
+        self.name = name
+        self.arg = arg
+
+    def __repr__(self) -> str:
+        return f"BuiltInFuncStmt({self.name}, {self.arg})"
+
+    def eval(self):
+        val = None
+        match self.name:
+            case 'int':
+                val = int(self.arg[0])
+            case 'float':
+                val = float(self.arg[0])
+            case 'string':
+                val = str(self.arg[0])
+            case 'length':
+                val = len(self.arg[0])
+            case 'range':
+                val = range(*[i.eval() for i in self.arg])
+        return val
 
 
 class FuncStmt(Stmt):

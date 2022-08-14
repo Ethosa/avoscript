@@ -2,7 +2,8 @@
 
 # AVOScript
 ### little language just for fun
-requires python `3.10.x`!
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/avoscript?style=flat-square)](https://pypi.project/avoscript)
+[![PyPI](https://img.shields.io/pypi/v/avoscript?style=flat-square)](https://pypi.org/project/avoscript)
 
 </div>
 

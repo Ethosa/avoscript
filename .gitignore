@@ -1,8 +1,7 @@
-__pycache__/*
-__pycache__
-*.pyc
-.idea/*
-dist/*
-MANIFEST
+__pycache__/
+.idea/
+dist/
 *egg-info/
+*.pyc
+MANIFEST
 

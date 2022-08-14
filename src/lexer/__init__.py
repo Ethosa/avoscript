@@ -18,6 +18,7 @@ class Lexer:
         (r'\b(class|init|super|this|abstract|interface|of)\b', TokenType.RESERVED),
         (r'[\(\)\{\}\[\];,]', TokenType.RESERVED),
         (r'(\bin\b|\bor\b|\band\b|&&|\|\||\+\=|\-\=|\*\=|\/\=|\+\+|\-\-)', TokenType.OPERATOR),
+        (r'\b(int|float|string|range|length)\b', TokenType.BUILT_IN),
         (r'(=>|->)', TokenType.OPERATOR),
         (r'>=', TokenType.OPERATOR),
         (r'<=', TokenType.OPERATOR),

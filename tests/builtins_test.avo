@@ -1,0 +1,23 @@
+for i in range(5) {
+    echo("i:", i);
+}
+
+var min = 0;
+var max = 10;
+var step = 2;
+for i in range(min, max, step) {
+    echo(min, max, step, i);
+}
+
+echo(length([0, 1, 2]) - 3);
+
+func sort(arr) {
+    var len = length(arr);
+    echo(len);
+    for var i = 0; i < len; ++i {
+
+    }
+    return arr;
+}
+
+echo(sort([2, 5, 0, 1, 9]));

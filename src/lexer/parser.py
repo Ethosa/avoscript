@@ -15,6 +15,10 @@ def operator(kw: str) -> Reserved:
     return Reserved(kw, TokenType.OPERATOR)
 
 
+def builtin(kw: str) -> Reserved:
+    return Reserved(kw, TokenType.BUILT_IN)
+
+
 def process_boolean(op):
     match op:
         case 'on' | 'true' | 'enable':
@@ -37,6 +41,9 @@ a_expr_precedence_levels = [
 relational_operators = ['==', '!=', '>=', '<=', '<', '>']
 unary_operators = ['--', '++', '-']
 assign_operators = ['+=', '-=', '*=', '/=', '=']
+builtins = [
+    'int', 'float', 'string', 'length', 'range'
+]
 b_expr_precedence_levels = [
     ['and', '&&'],
     ['or', '||'],
@@ -91,6 +98,7 @@ def id_or_module():
 
 def a_expr_value():
     return (
+            Lazy(built_in_func_stmt) |
             (num ^ (lambda x: IntAST(x))) |
             (float_num ^ (lambda x: FloatAST(x))) |
             (id_tag ^ (lambda x: VarAST(x))) |
@@ -126,6 +134,11 @@ def process_binop(op):
 def any_op_in_list(ops):
     op_parsers = [operator(op) for op in ops]
     return reduce(lambda l, r: l | r, op_parsers)
+
+
+def any_builtin_in_list(blt):
+    parsers = [builtin(i) for i in blt]
+    return reduce(lambda l, r: l | r, parsers)
 
 
 def precedence(val_parser, levels, combine):
@@ -237,7 +250,7 @@ def reassign_stmt():
     def process(p):
         (name, op), e = p
         return AssignStmt(name, e, False, False, op)
-    return (id_or_module() + any_op_in_list(assign_operators) + expression()) ^ process
+    return ((brace_expr() | id_or_module()) + any_op_in_list(assign_operators) + expression()) ^ process
 
 
 def unary_op_stmt():
@@ -319,6 +332,19 @@ def read_stmt():
         _, text = p
         return ReadStmt(text)
     return keyword('read') + expression() ^ process
+
+
+def built_in_func_stmt():
+    def process(p):
+        ((name, _), arg), _ = p
+        args = []
+        for a in arg:
+            args.append(a.value[0])
+        return BuiltInFuncStmt(name, args)
+    return (
+            any_builtin_in_list(builtins) + keyword('(') +
+            Rep(Lazy(expression) + Opt(keyword(','))) + keyword(')')
+    ) ^ process
 
 
 def func_stmt():

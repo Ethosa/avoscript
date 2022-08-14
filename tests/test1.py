@@ -90,6 +90,11 @@ class MyTestCase(unittest.TestCase):
         parsed = imp_parser(Lexer.lex_file('main.avo'))
         parsed.value.eval()
 
+    @staticmethod
+    def test_e_builtins():
+        parsed = imp_parser(Lexer.lex_file('builtins_test.avo'))
+        parsed.value.eval()
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

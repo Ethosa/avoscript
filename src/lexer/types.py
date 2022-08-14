@@ -11,7 +11,8 @@ class TokenType(Enum):
     FLOAT = 4
     BOOL = 5
     STRING = 6
-    ID = 7
+    BUILT_IN = 7
+    ID = 8
 
 
 class Type(Enum):
