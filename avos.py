@@ -54,6 +54,9 @@ def main():
             f"Welcome to {Fore.RED}AVOScript{Fore.RESET} "
             f"{Fore.CYAN}{version}{Fore.RESET} interactive mode."
         )
+        print(
+            f"Write {Fore.RED}exit{Fore.RESET} to shutdown interactive mode."
+        )
         print(f"{Fore.GREEN}>>>{Fore.RESET} ", end="")
         source = input()
         STATEMENT_LIST_LEVEL += 1

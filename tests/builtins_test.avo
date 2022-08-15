@@ -5,6 +5,8 @@ for i in range(5) {
 var min = 0;
 var max = 10;
 var step = 2;
+echo("min is $min, max is $max, step is $step");
+echo("5 + 100 * 2 = ${5 + 100 * 2}");
 for i in range(min, max, step) {
     echo(min, max, step, i);
 }
@@ -30,3 +32,20 @@ func sort(arr) {
 }
 
 echo(sort([2, 5, 0, 1, 9]));
+
+
+func my_func(callable) {
+    callable();
+}
+
+var a = () => {echo("call from lambda");}
+func b() {
+    echo("call from func");
+}
+
+my_func(a);
+my_func(b);
+my_func(){
+    echo("call from sweet lambda");
+}
+

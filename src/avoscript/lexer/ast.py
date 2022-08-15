@@ -3,6 +3,7 @@ from os.path import exists, isfile
 from typing import Union, Tuple, List, Any
 from pprint import pprint
 from copy import deepcopy
+from re import findall
 
 from equality import AnyBase
 
@@ -113,6 +114,9 @@ class BoolAST(ASTExpr):
 
 
 class StringAST(ASTExpr):
+    VARIABLE = r'\$[a-zA-Z][a-zA-Z0-9_]*'
+    EXPRESSION = r'\$\{.*\}'
+
     def __init__(self, s: str):
         self.s = s
 
@@ -120,7 +124,19 @@ class StringAST(ASTExpr):
         return f'StringAST("{self.s}")'
 
     def eval(self):
-        return self.s
+        from .parser import expression
+        from . import Lexer
+        result = self.s
+        matched = findall(StringAST.VARIABLE, result)
+        for m in matched:
+            result = result.replace(m, str(VarAST(m[1:]).eval()))
+        matched = findall(StringAST.EXPRESSION, result)
+        for m in matched:
+            result = result.replace(
+                m,
+                str(expression()(Lexer.lex(m[2:-1]), 0).value.eval())
+            )
+        return result
 
 
 class ArrayAST(ASTExpr):
@@ -544,9 +560,14 @@ class AssignStmt(Stmt):
                 result = obj.obj.eval()
             if result is not None:
                 for i in obj.v[:-1]:
+                    i = i.eval()
                     result = result[i.eval()]
             if result is not None:
-                result[obj.v[-1].eval()] = val.eval()
+                i = obj.v[-1].eval()
+                if i == len(result):
+                    result.append(val.eval())
+                else:
+                    result[i] = val.eval()
         elif isinstance(self.name, ModuleCallAST):
             module = self.name
             if module.name not in MODULES:

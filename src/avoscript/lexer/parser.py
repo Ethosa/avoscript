@@ -383,18 +383,20 @@ def interface_func_stmt():
 
 def call_stmt():
     def process(p):
-        ((func_name, _), args), _ = p
+        (((func_name, _), args), _), l = p
         arguments = []
         for arg in args:
             if arg.value[0][0] is None:
                 arguments.append(ArgumentAST(None, arg.value[0][1]))
             else:
                 arguments.append(ArgumentAST(arg.value[0][0][0], arg.value[0][1]))
+        if l:
+            arguments.append(ArgumentAST(None, LambdaStmt([], l[0][1])))
         return CallStmt(func_name, arguments)
     return (
         id_or_module() + keyword('(') +
         Rep(Opt(id_tag + operator('=')) + expression() + Opt(keyword(','))) +
-        keyword(')')
+        keyword(')') + Opt(keyword('{') + Opt(Lazy(stmt_list)) + keyword('}'))
     ) ^ process
 
 
