@@ -1,6 +1,7 @@
 # main avoscript file
 import math;
 import other_module;
+import smth, test_code;
 from objects import Animal, Cat, Dog;
 
 var x = Dog();

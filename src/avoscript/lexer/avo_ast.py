@@ -4,8 +4,12 @@ from typing import Union, Tuple, List, Any
 from pprint import pprint
 from copy import deepcopy
 from re import findall
+import traceback
+
+from colorama import Fore
 
 from equality import AnyBase
+from . import Lexer, parser
 
 
 ENV = []
@@ -49,6 +53,7 @@ class Signal:
     CURRENT_CLASS = None
     ERROR = None
     NEED_FREE = True
+    VERBOSE = False
 
     @staticmethod
     def refresh():
@@ -85,7 +90,7 @@ class IntAST(ASTExpr):
         self.i = i
 
     def __repr__(self) -> str:
-        return f"IntAST({self.i})"
+        return f"IntAST({Fore.LIGHTYELLOW_EX}{self.i}{Fore.RESET})"
 
     def eval(self):
         return self.i
@@ -96,7 +101,7 @@ class FloatAST(ASTExpr):
         self.f = f
 
     def __repr__(self) -> str:
-        return f"FloatAST({self.f})"
+        return f"FloatAST({Fore.LIGHTYELLOW_EX}{self.f}{Fore.RESET})"
 
     def eval(self):
         return self.f
@@ -107,7 +112,7 @@ class BoolAST(ASTExpr):
         self.b = b
 
     def __repr__(self) -> str:
-        return f"BoolAST({self.b})"
+        return f"BoolAST({Fore.YELLOW}{self.b}{Fore.RESET})"
 
     def eval(self):
         return self.b
@@ -121,11 +126,9 @@ class StringAST(ASTExpr):
         self.s = s
 
     def __repr__(self) -> str:
-        return f'StringAST("{self.s}")'
+        return f'StringAST({Fore.LIGHTGREEN_EX}"{self.s}"{Fore.RESET})'
 
     def eval(self):
-        from .parser import expression
-        from . import Lexer
         result = self.s
         matched = findall(StringAST.VARIABLE, result)
         for m in matched:
@@ -134,7 +137,7 @@ class StringAST(ASTExpr):
         for m in matched:
             result = result.replace(
                 m,
-                str(expression()(Lexer.lex(m[2:-1]), 0).value.eval())
+                str(parser.expression()(Lexer.lex(m[2:-1]), 0).value.eval())
             )
         return result
 
@@ -460,13 +463,15 @@ class StmtList(Stmt):
         # Statements
         result = None
         for stmt in self.statements:
+            if Signal.VERBOSE:
+                print(f'{Fore.CYAN}[STATEMENT]{Fore.RESET}: {stmt}')
             try:
                 result = stmt.eval()
             except Exception as e:
                 Signal.ERROR = e
             if Signal.ERROR is not None:
                 if not Signal.IN_TRY:
-                    print(f'RuntimeError: {Signal.ERROR}')
+                    print(f'{Fore.RED}RuntimeError: {Signal.ERROR}{Fore.RESET}')
                     exit(0)
                 break
             if (Signal.BREAK or Signal.CONTINUE) and Signal.IN_CYCLE:
@@ -994,9 +999,9 @@ class FuncStmt(Stmt):
     def eval(self):
         has_var, level, is_const = has_variable(self.name)
         if has_var and not is_const and level == STATEMENT_LIST_LEVEL:
-            raise RuntimeError(f"Function {self.name} is exists")
-        else:
-            ENV[STATEMENT_LIST_LEVEL][self.name] = (self.args, self.body)
+            Signal.ERROR = f"Function {self.name} is exists"
+            return
+        ENV[STATEMENT_LIST_LEVEL][self.name] = (self.args, self.body)
 
 
 class LambdaStmt(Stmt):
@@ -1047,9 +1052,10 @@ class CallStmt(Stmt):
             kwargs = [i for i in self.args if i.name is not None]
             fkwargs = [i for i in f[0] if i.value is not None]
             if len(args) != len(fargs):
-                raise RuntimeError(
+                Signal.ERROR = (
                     f"function {self.name} waited for {len(fargs)}, but got {len(args)} arguments"
                 )
+                return
             Signal.ARGUMENTS = {n: v for n, v in zip(fargs, args)}
             Signal.KW_ARGUMENTS = fkwargs + kwargs
             if not Signal.IN_FUNCTION:
@@ -1069,7 +1075,7 @@ class CallStmt(Stmt):
             Signal.IN_CLASS = False
             Signal.CURRENT_CLASS = None
             return returned
-        raise RuntimeError(f"function {self.name} isn't available")
+        Signal.ERROR = "function {self.name} isn't available"
 
 
 class ReturnStmt(Stmt):
@@ -1085,30 +1091,36 @@ class ReturnStmt(Stmt):
 
 
 class ImportStmt(Stmt):
-    def __init__(self, module_name, objects):
+    def __init__(self, module_name, objects, from_import):
         self.module_name = module_name
         self.objects = objects
+        self.from_import = from_import
+        print(self)
 
     def __repr__(self) -> str:
-        return f"ImportStmt({self.module_name}, {self.objects})"
+        return f"ImportStmt({self.module_name}, {self.objects}, {self.from_import})"
 
     def eval(self):
-        from .parser import stmt_list
-        from . import Lexer
-        module_name = self.module_name + '.avo'
-        if not exists(module_name) or not isfile(module_name):
-            raise RuntimeError(f"can't find module {module_name}")
-        statements = stmt_list()(Lexer.lex_file(module_name), 0)
-        if statements:
-            Signal.CREATE_BACK_LEVEL = True
-            MODULES[self.module_name] = STATEMENT_LIST_LEVEL + 1
-            statements.value.eval()
-        if self.objects is not None:
+        if self.module_name is not None:
+            module_name = self.module_name + '.avo'
+            if not exists(module_name) or not isfile(module_name):
+                Signal.ERROR = f"can't find module {module_name}"
+                return
+            statements = parser.stmt_list()(Lexer.lex_file(module_name), 0)
+            if statements:
+                Signal.CREATE_BACK_LEVEL = True
+                MODULES[self.module_name] = STATEMENT_LIST_LEVEL + 1
+                statements.value.eval()
+        if self.from_import:
             env = [i for i in ENV[MODULES[self.module_name]].keys()]
             env_c = [i for i in ENV_CONSTS[MODULES[self.module_name]].keys()]
             for k in env + env_c:
                 if k not in self.objects:
                     del ENV[MODULES[self.module_name]][k]
+        else:
+            while len(self.objects) > 0:
+                self.module_name = self.objects.pop(0)
+                self.eval()
 
 
 class EOFStmt(Stmt):
