@@ -13,7 +13,7 @@ init(autoreset=True)
 parser = ArgumentParser(
     "avoscript",
     usage="avocat [-h] [-v] [-i] [-s] [-f]",
-    description=f"{Fore.LIGHTRED_EX}AVOScript{Fore.RESET} interpreter",
+    description=f"{Fore.LIGHTRED_EX}AVOScript{Fore.RESET} {Fore.LIGHTCYAN_EX}{version}{Fore.RESET} interpreter",
 )
 # --== Flags ==-- #
 parser.add_argument(

@@ -5,14 +5,15 @@ from typing import Tuple, NewType
 
 class TokenType(Enum):
     EOF = 0
-    RESERVED = 1
-    OPERATOR = 2
-    INT = 3
-    FLOAT = 4
-    BOOL = 5
-    STRING = 6
-    BUILT_IN = 7
-    ID = 8
+    NEW_LINE = 1
+    SPACE = 2
+    RESERVED = 3
+    OPERATOR = 4
+    INT = 5
+    FLOAT = 6
+    BOOL = 7
+    STRING = 8
+    ID = 9
 
 
 class Type(Enum):

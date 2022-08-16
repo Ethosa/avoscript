@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
+import traceback
 from os.path import exists, isfile
 from typing import Union, Tuple, List, Any
 from pprint import pprint
 from copy import deepcopy
 from re import findall
-import traceback
+from random import randint, random
+import math
 
 from colorama import Fore
 
@@ -18,6 +20,18 @@ STATEMENT_LIST_LEVEL = -1
 MODULES = {
     # module_name: statement_list_level
 }
+BUILTIN = {
+    'round': round,
+    'randf': random,
+    'randi': randint,
+    'range': range,
+    'length': len,
+    'string': str,
+    'int': int,
+    'float': float,
+    'array': list,
+}
+BUILTIN_BUILD = False
 
 
 def has_variable(name: str) -> Tuple[bool, int, bool]:
@@ -179,11 +193,16 @@ class ModuleCallAST(ASTExpr):
         return f"ModuleCallAST({self.name}, {self.obj})"
 
     def eval(self):
+        in_built_in = (self.name, self.obj) in BUILTIN
         if self.name in MODULES:
             if self.obj not in ENV[MODULES[self.name]]:
                 Signal.ERROR = f"unknown module object {self.obj}"
                 return
+            elif in_built_in:
+                return None
             return ENV[MODULES[self.name]][self.obj]
+        elif in_built_in:
+            return None
         Signal.ERROR = f"unknown module {self.obj}"
 
 
@@ -440,7 +459,13 @@ class StmtList(Stmt):
             yield stmt
 
     def eval(self):
-        global STATEMENT_LIST_LEVEL
+        global STATEMENT_LIST_LEVEL, BUILTIN_BUILD
+        if not BUILTIN_BUILD:
+            BUILTIN_BUILD = True
+            for attr in dir(math):
+                a = getattr(math, attr)
+                if callable(a) and not attr.startswith('_'):
+                    BUILTIN[('math', attr)] = a
         in_main = False
         if not Signal.IN_MAIN:
             Signal.IN_MAIN = True
@@ -468,6 +493,7 @@ class StmtList(Stmt):
             try:
                 result = stmt.eval()
             except Exception as e:
+                traceback.print_exc()
                 Signal.ERROR = e
             if Signal.ERROR is not None:
                 if not Signal.IN_TRY:
@@ -963,30 +989,6 @@ class ReadStmt(Stmt):
             return self.text
 
 
-class BuiltInFuncStmt(Stmt):
-    def __init__(self, name, arg):
-        self.name = name
-        self.arg = arg
-
-    def __repr__(self) -> str:
-        return f"BuiltInFuncStmt({self.name}, {self.arg})"
-
-    def eval(self):
-        val = None
-        match self.name:
-            case 'int':
-                val = int(self.arg[0].eval())
-            case 'float':
-                val = float(self.arg[0].eval())
-            case 'string':
-                val = str(self.arg[0].eval())
-            case 'length':
-                val = len(self.arg[0].eval())
-            case 'range':
-                val = range(*[i.eval() for i in self.arg])
-        return val
-
-
 class FuncStmt(Stmt):
     def __init__(self, name, args, body):
         self.name = name
@@ -1075,7 +1077,19 @@ class CallStmt(Stmt):
             Signal.IN_CLASS = False
             Signal.CURRENT_CLASS = None
             return returned
-        Signal.ERROR = "function {self.name} isn't available"
+        else:
+            args = [i.value.eval() for i in self.args if i.name is None]
+            kwargs = {i.name: i.value.eval() for i in self.args if i.name is not None}
+            if isinstance(self.name, str):
+                if self.name in BUILTIN:
+                    returned = BUILTIN[self.name](*args, **kwargs)
+                    return returned
+            elif isinstance(self.name, ModuleCallAST):
+                val = (self.name.name, self.name.obj)
+                if val in BUILTIN:
+                    returned = BUILTIN[val](*args, **kwargs)
+                    return returned
+        Signal.ERROR = f"function {self.name} isn't available"
 
 
 class ReturnStmt(Stmt):

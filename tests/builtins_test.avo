@@ -1,3 +1,5 @@
+echo(math.hypot(4, 5));
+
 for i in range(5) {
     echo("i:", i);
 }
@@ -45,7 +47,7 @@ func b() {
 
 my_func(a);
 my_func(b);
-my_func(){
+my_func() => {
     echo("call from sweet lambda");
 }
 

@@ -15,10 +15,6 @@ def operator(kw: str) -> Reserved:
     return Reserved(kw, TokenType.OPERATOR)
 
 
-def builtin(kw: str) -> Reserved:
-    return Reserved(kw, TokenType.BUILT_IN)
-
-
 def process_boolean(op):
     match op:
         case 'on' | 'true' | 'enable':
@@ -41,9 +37,6 @@ a_expr_precedence_levels = [
 relational_operators = ['==', '!=', '>=', '<=', '<', '>']
 unary_operators = ['--', '++', '-']
 assign_operators = ['+=', '-=', '*=', '/=', '=']
-builtins = [
-    'int', 'float', 'string', 'length', 'range'
-]
 b_expr_precedence_levels = [
     ['and', '&&'],
     ['or', '||'],
@@ -98,7 +91,12 @@ def id_or_module():
 
 def a_expr_value():
     return (
-            Lazy(built_in_func_stmt) |
+            Lazy(call_stmt) |
+            Lazy(array_expr) |
+            Lazy(read_stmt) |
+            brace_expr() |
+            module_obj_expr() |
+            Lazy(class_property_stmt) |
             (num ^ (lambda x: avo_ast.IntAST(x))) |
             (float_num ^ (lambda x: avo_ast.FloatAST(x))) |
             (id_tag ^ (lambda x: avo_ast.VarAST(x))) |
@@ -118,12 +116,6 @@ def a_expr_group():
 
 def a_expr_term():
     return (
-            module_obj_expr() |
-            brace_expr() |
-            Lazy(array_expr) |
-            Lazy(read_stmt) |
-            Lazy(call_stmt) |
-            Lazy(class_property_stmt) |
             a_expr_value() |
             a_expr_group() |
             unary_op_stmt()
@@ -137,11 +129,6 @@ def process_binop(op):
 def any_op_in_list(ops):
     op_parsers = [operator(op) for op in ops]
     return reduce(lambda l, r: l | r, op_parsers)
-
-
-def any_builtin_in_list(blt):
-    parsers = [builtin(i) for i in blt]
-    return reduce(lambda l, r: l | r, parsers)
 
 
 def precedence(val_parser, levels, combine):
@@ -334,19 +321,6 @@ def read_stmt():
     return keyword('read') + expression() ^ process
 
 
-def built_in_func_stmt():
-    def process(p):
-        ((name, _), arg), _ = p
-        args = []
-        for a in arg:
-            args.append(a.value[0])
-        return avo_ast.BuiltInFuncStmt(name, args)
-    return (
-            any_builtin_in_list(builtins) + keyword('(') +
-            Rep(Lazy(expression) + Opt(keyword(','))) + keyword(')')
-    ) ^ process
-
-
 def func_stmt():
     def process(p):
         ((((((_, func_name), _), args), _), _), statements), _ = p
@@ -396,7 +370,7 @@ def call_stmt():
     return (
         id_or_module() + keyword('(') +
         Rep(Opt(id_tag + operator('=')) + expression() + Opt(keyword(','))) +
-        keyword(')') + Opt(keyword('{') + Opt(Lazy(stmt_list)) + keyword('}'))
+        keyword(')') + Opt(operator('=>') + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}'))
     ) ^ process
 
 

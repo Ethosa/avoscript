@@ -5,4 +5,4 @@ from .lexer.result import *
 from .lexer.avo_ast import *
 
 
-version = 'v0.3.5'
+version = 'v0.3.6'

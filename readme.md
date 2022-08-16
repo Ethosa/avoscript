@@ -39,7 +39,7 @@ flags
   ```
 - `-s`/`--script` execute script
   ```bash
-  python avos.py -s "var a = 1; echo a;"
+  python avos.py -s "var a = 1; echo(a);"
   ```
 - `-f`/`--file` execute code from file
   ```bash
