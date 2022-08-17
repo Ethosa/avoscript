@@ -1,9 +1,0 @@
-func outer(x) {
-    var tmp = 3;
-    func inner(y) {
-        echo(x + y + ++tmp);
-    }
-    inner(10);
-}
-
-outer(2);
