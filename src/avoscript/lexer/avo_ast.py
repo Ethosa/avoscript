@@ -99,6 +99,14 @@ class ASTExpr(AnyBase):
         raise RuntimeError('nothing to eval')
 
 
+class NullAST(ASTExpr):
+    def __repr__(self) -> str:
+        return "NullAST()"
+
+    def eval(self):
+        return None
+
+
 class IntAST(ASTExpr):
     def __init__(self, i: int):
         self.i = i
@@ -165,6 +173,35 @@ class ArrayAST(ASTExpr):
 
     def eval(self):
         return [i.eval() for i in self.arr]
+
+
+class GeneratorAST(ASTExpr):
+    def __init__(self, val, var, obj, condition):
+        self.val = val
+        self.var = var
+        self.obj = obj
+        self.condition = condition
+
+    def __repr__(self) -> str:
+        return f"GeneratorAST({self.val}, {self.var}, {self.obj}, {self.condition})"
+
+    def eval(self):
+        global STATEMENT_LIST_LEVEL
+        result = []
+        ENV.append({})
+        ENV_CONSTS.append({})
+        STATEMENT_LIST_LEVEL += 1
+        for i in self.obj.eval():
+            ENV[STATEMENT_LIST_LEVEL][self.var] = i
+            if self.condition is not None:
+                if self.condition.eval():
+                    result.append(self.val.eval())
+            else:
+                result.append(self.val.eval())
+        STATEMENT_LIST_LEVEL -= 1
+        ENV_CONSTS.pop()
+        ENV.pop()
+        return result
 
 
 class VarAST(ASTExpr):

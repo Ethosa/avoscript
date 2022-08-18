@@ -29,6 +29,7 @@ id_tag = Tag(TokenType.ID)
 num = Tag(TokenType.INT) ^ (lambda x: int(x))
 float_num = Tag(TokenType.FLOAT) ^ (lambda x: float(x))
 boolean = Tag(TokenType.BOOL) ^ process_boolean
+null = keyword('null') ^ (lambda x: avo_ast.NullAST())
 string = Tag(TokenType.STRING) ^ (lambda x: avo_ast.StringAST(x[1:-1]))
 a_expr_precedence_levels = [
     ['*', '/'],
@@ -49,6 +50,18 @@ def array_expr():
         (_, data), _ = p
         return avo_ast.ArrayAST(data)
     return keyword('[') + Opt(Rep(Lazy(expr) + Opt(keyword(',')))) + keyword(']') ^ process
+
+
+def array_generator_expr():
+    def process(p):
+        ((((((_, var), _), val), _), obj), condition), _ = p
+        if condition is not None:
+            _, condition = condition
+        return avo_ast.GeneratorAST(var, val, obj, condition)
+    return (
+            keyword('[') + expression() + keyword('for') + id_tag + operator('in') + expression() +
+            Opt(keyword('if') + Exp(b_expr(), None)) + keyword(']')
+    ) ^ process
 
 
 def if_else_expr():
@@ -92,6 +105,7 @@ def id_or_module():
 def a_expr_value():
     return (
             Lazy(call_stmt) |
+            Lazy(array_generator_expr) |
             Lazy(array_expr) |
             Lazy(read_stmt) |
             brace_expr() |
@@ -101,7 +115,8 @@ def a_expr_value():
             (float_num ^ (lambda x: avo_ast.FloatAST(x))) |
             (id_tag ^ (lambda x: avo_ast.VarAST(x))) |
             (boolean ^ (lambda x: avo_ast.BoolAST(x))) |
-            string
+            string |
+            null
     )
 
 
@@ -223,7 +238,9 @@ def assign_stmt():
     def process(p):
         ((_, name), _), e = p
         return avo_ast.AssignStmt(name, e, False, True)
-    return (keyword('var') + id_tag + operator('=') + expression()) ^ process
+    return (
+            keyword('var') + id_tag + operator('=') + expression()
+    ) ^ process
 
 
 def assign_const_stmt():

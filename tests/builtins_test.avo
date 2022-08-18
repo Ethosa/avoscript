@@ -1,12 +1,15 @@
 echo(math.hypot(4, 5));
 
+var generated_arr = [i+5 for i in range(5) if i % 2 == 0]
+echo(generated_arr)
+
 for i in range(5) {
     echo("i:", i);
 }
 
-var min = 0;
-var max = 10;
-var step = 2;
+var min = 0
+var max = 10
+var step = 2
 echo("min is $min, max is $max, step is $step");
 echo("5 + 100 * 2 = ${5 + 100 * 2}");
 for i in range(min, max, step) {
