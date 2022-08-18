@@ -22,6 +22,7 @@ export default {
         language: 'AVOScript',
         theme: 'AVOScriptTheme',
         wordWrap: 'on',
+        fontSize: 24,
       },
       AVOScriptTheme: {
         base: 'vs-dark',
@@ -29,6 +30,7 @@ export default {
         rules: [
           {background: '14131b'},
           {token: 'keyword', foreground: 'da4f3b'},
+          {token: 'string.curly', foreground: 'da4f3b'},
           {token: 'operator', foreground: '8d6695'},
           {token: 'number', foreground: 'e78d0d'},
           {token: 'className', foreground: 'f1a910'},
@@ -52,7 +54,8 @@ export default {
         ],
         keywords: [
           'abstract', 'class', 'interface', 'of', 'func', 'const', 'var', 'if', 'elif', 'else',
-          'for', 'while', 'break', 'continue', 'return', 'switch', 'case',
+          'for', 'while', 'break', 'continue', 'return', 'switch', 'case', 'try', 'catch', 'import',
+          'from',
         ],
         operators: [
           '&&', 'and', '||', 'or', '+', '-', '/', '*', '%', '^', '$', '@', '!',
@@ -68,8 +71,13 @@ export default {
         ],
         tokenizer: {
           root: [
-            [/'.*'/, 'string'],
-            [/".*"/, 'string'],
+            [/'/, 'string', '@string1'],
+            [/"/, 'string', '@string2'],
+            {include: '@common'},
+            [/#\[/, 'comment', '@comment'],
+            [/(^#.*$)/, 'comment'],
+          ],
+          common: [
             [/[a-zA-Z][a-zA-Z0-9_]*(?=\()/, {
               cases: {
                 '@builtin': 'builtin',
@@ -87,8 +95,27 @@ export default {
             }],
             [/[><!=\-/+\-?%$@&^]/, 'operator'],
             [/[0-9]+/, 'number'],
-            [/(^#.*$)/, 'comment'],
-          ]
+          ],
+          comment: [
+            [/\]#/, 'comment', '@pop'],
+            [/[\s\S]/, 'comment'],
+          ],
+          string1: [
+            [/'/, 'string', '@pop'],
+            [/\$[a-zA-Z][a-zA-Z0-9_]*/, 'keyword'],
+            [/\$\{/, 'string.curly', '@stringCurly'],
+            [/./, 'string'],
+          ],
+          string2: [
+            [/"/, 'string', '@pop'],
+            [/\$[a-zA-Z][a-zA-Z0-9_]*/, 'keyword'],
+            [/\$\{/, 'string.curly', '@stringCurly'],
+            [/./, 'string'],
+          ],
+          stringCurly: [
+            [/\}/, 'string.curly', '@pop'],
+            {include: '@common'},
+          ],
         }
       }
     }
@@ -123,9 +150,27 @@ export default {
         }, {
           label: 'switch',
           kind: languages.CompletionItemKind.Snippet,
-          insertText: 'switch(${1:data}) {\n\tcase ${2:condition} {\n\t\t${3:# body}\n\t} else {\n\t\t${4:# else body}\n\t}\n}',
+          insertText: 'switch(${1:data}) {\n\tcase ${2:condition} {\n\t\t${3:# body}\n\t} else {\n\t\t${4:# body}\n\t}\n}',
           insertTextRules: languages.CompletionItemInsertTextRule.InsertAsSnippet,
           documentation: 'Switch-Case Statement'
+        }, {
+          label: 'for',
+          kind: languages.CompletionItemKind.Keyword,
+          insertText: 'for var i = ${1:0}; ${2:condition}; ${3:++i) {\n\t${4:# body}\n}',
+          insertTextRules: languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'For Statement'
+        }, {
+          label: 'foreach',
+          kind: languages.CompletionItemKind.Keyword,
+          insertText: 'for i in ${1:range(100)} {\n\t{$2:# body}\n}',
+          insertTextRules: languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'Foreach Statement'
+        }, {
+          label: 'trycatch',
+          kind: languages.CompletionItemKind.Keyword,
+          insertText: 'try {\n\t${1:# error code here}\n} catch ${2:e} {\n\t${3:# catch error here}\n}',
+          insertTextRules: languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'Try Catch'
         }
       ]
       return {suggestions: s}
@@ -139,6 +184,8 @@ export default {
       languages.registerCompletionItemProvider('AVOScript', {provideCompletionItems: this.completions})
       editor.defineTheme('AVOScriptTheme', this.AVOScriptTheme)
     }
+    if (this.editor)
+      this.editor.dispose()
     this.editor = editor.create(this.$refs.editor, this.config)
   },
   beforeUnmount() {
