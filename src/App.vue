@@ -93,7 +93,7 @@ export default {
                 '@booleans': 'boolean',
               }
             }],
-            [/[><!=\-/+\-?%$@&^]/, 'operator'],
+            [/[><!=\-/+\-?%$@&^:]/, 'operator'],
             [/[0-9]+/, 'number'],
           ],
           comment: [

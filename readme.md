@@ -1,24 +1,16 @@
-# avoscript
+<div align="center">
 
-## Project setup
-```
-yarn install
-```
+# AVOScript
+### Little language just4fun
 
-### Compiles and hot-reloads for development
-```
-yarn serve
-```
+</div>
 
-### Compiles and minifies for production
-```
-yarn build
-```
 
-### Lints and fixes files
-```
-yarn lint
+### Launch Editor
+```bash
+git clone https://github.com/ethosa/avoscript
+cd avoscript
+git switch web-editor
+yarn && yarn serve
 ```
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
