@@ -18,7 +18,7 @@ export default {
     return {
       registered: false,
       config: {
-        value: `# Example program\nclass Main{\n\tfunc main() {\n\t\techo('Hello world!')\n\t\techo("test", 0.1, 2, true, off)\n\t\tif 0 > 1 or 2 == 2 {\n\t\t\techo("ok")\n\t\t}\n\t}\n}\n\nMain::main()\n`,
+        value: `# Example program\nclass Main{\n\tfunc main() {\n\t\techo('Hello world!')\n\t}\n}\n\nMain::main()\n`,
         language: 'AVOScript',
         theme: 'AVOScriptTheme',
         wordWrap: 'on',
