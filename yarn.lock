@@ -1990,9 +1990,9 @@
   "resolved" "https://registry.npmmirror.com/at-least-node/-/at-least-node-1.0.0.tgz"
   "version" "1.0.0"
 
-"autoprefixer@^10.2.4":
+"autoprefixer@^10.2.4", "autoprefixer@^10.4.8":
   "integrity" "sha512-75Jr6Q/XpTqEf6D2ltS5uMewJIx5irCU1oBYJrWjFenq/m12WRRrz6g15L1EIoYvPLXTbEry7rDOwrcYNj77xw=="
-  "resolved" "https://registry.npmmirror.com/autoprefixer/-/autoprefixer-10.4.8.tgz"
+  "resolved" "https://registry.npmjs.org/autoprefixer/-/autoprefixer-10.4.8.tgz"
   "version" "10.4.8"
   dependencies:
     "browserslist" "^4.21.3"
@@ -4959,9 +4959,9 @@
   "resolved" "https://registry.npmmirror.com/postcss-value-parser/-/postcss-value-parser-4.2.0.tgz"
   "version" "4.2.0"
 
-"postcss@^7.0.0 || ^8.0.1", "postcss@^8.0.0", "postcss@^8.0.9", "postcss@^8.1.0", "postcss@^8.1.10", "postcss@^8.2.14", "postcss@^8.2.15", "postcss@^8.2.2", "postcss@^8.2.6", "postcss@^8.3.3", "postcss@^8.3.5", "postcss@^8.4.14", "postcss@^8.4.7", "postcss@>=8.0.9":
+"postcss@^7.0.0 || ^8.0.1", "postcss@^8.0.0", "postcss@^8.0.9", "postcss@^8.1.0", "postcss@^8.1.10", "postcss@^8.2.14", "postcss@^8.2.15", "postcss@^8.2.2", "postcss@^8.2.6", "postcss@^8.3.3", "postcss@^8.3.5", "postcss@^8.4.14", "postcss@^8.4.16", "postcss@^8.4.7", "postcss@>=8.0.9":
   "integrity" "sha512-ipHE1XBvKzm5xI7hiHCZJCSugxvsdq2mPnsq5+UF+VHCjiBvtDrlxJfMBToWaP9D5XlgNmcFGqoHmUn0EYEaRQ=="
-  "resolved" "https://registry.npmmirror.com/postcss/-/postcss-8.4.16.tgz"
+  "resolved" "https://registry.npmjs.org/postcss/-/postcss-8.4.16.tgz"
   "version" "8.4.16"
   dependencies:
     "nanoid" "^3.3.4"

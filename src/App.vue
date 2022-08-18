@@ -1,5 +1,9 @@
 <template>
-  <div ref='editor' class='editor'></div>
+  <div class="flex h-screen">
+    <div ref='editor' class='w-full h-full'>
+
+    </div>
+  </div>
 </template>
 
 
@@ -145,8 +149,4 @@ export default {
 
 
 <style>
-.editor {
-  width: 45em;
-  height: 35em;
-}
 </style>
