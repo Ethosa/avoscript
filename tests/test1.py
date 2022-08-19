@@ -1,5 +1,6 @@
 from src.avoscript import *
 import unittest
+import sys
 
 
 class MyTestCase(unittest.TestCase):

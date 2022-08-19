@@ -7,6 +7,7 @@ from copy import deepcopy
 from re import findall
 from random import randint, random
 import math
+import sys
 
 from colorama import Fore
 
@@ -66,6 +67,7 @@ class Signal:
     KW_ARGUMENTS = None
     CURRENT_CLASS = None
     ERROR = None
+    # no refresh
     NEED_FREE = True
     VERBOSE = False
 
@@ -88,6 +90,20 @@ class Signal:
         Signal.KW_ARGUMENTS = None
         Signal.CURRENT_CLASS = None
         Signal.ERROR = None
+
+
+class StdString:
+    def __init__(self):
+        self.out = ""
+
+    def write(self, v):
+        self.out += v
+
+    def __enter__(self):
+        sys.stdout = self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout = sys.__stdout__
 
 
 # --== AST ==-- #
