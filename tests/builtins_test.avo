@@ -2,6 +2,8 @@ echo(math.hypot(4, 5));
 
 var generated_arr = [i+5 for i in range(5) if i % 2 == 0]
 echo(generated_arr)
+generated_arr = [i/10 for i in range(1, 5)]
+echo(generated_arr)
 
 for i in range(5) {
     echo("i:", i);
@@ -50,7 +52,7 @@ func b() {
 
 my_func(a);
 my_func(b);
-my_func() => {
+my_func() with {
     echo("call from sweet lambda");
 }
 

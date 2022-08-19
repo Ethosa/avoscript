@@ -16,7 +16,7 @@ class Lexer:
         (r'\b(if|elif|else|switch|case|while|for|break|continue)\b', TokenType.RESERVED),
         (r'\b(echo|read|var|const|func|return|import|from)\b', TokenType.RESERVED),
         (r'\b(class|init|super|this|abstract|interface|of)\b', TokenType.RESERVED),
-        (r'\b(try|catch|null)\b', TokenType.RESERVED),
+        (r'\b(try|catch|null|with)\b', TokenType.RESERVED),
         (r'[\(\)\{\}\[\];,]', TokenType.RESERVED),
         (r'(\bin\b|\bor\b|\band\b|&&|\|\||\+\=|\-\=|\*\=|\/\=|\+\+|\-\-)', TokenType.OPERATOR),
         (r'(=>|->)', TokenType.OPERATOR),

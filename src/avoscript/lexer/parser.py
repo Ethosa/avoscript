@@ -46,6 +46,9 @@ b_expr_precedence_levels = [
 
 
 def array_expr():
+    """Array expression
+    [x, y, z, ...]
+    """
     def process(p):
         (_, data), _ = p
         return avo_ast.ArrayAST(data)
@@ -53,6 +56,9 @@ def array_expr():
 
 
 def array_generator_expr():
+    """Array generator expression
+    [i for i in object if i > x]
+    """
     def process(p):
         ((((((_, var), _), val), _), obj), condition), _ = p
         if condition is not None:
@@ -65,6 +71,10 @@ def array_generator_expr():
 
 
 def if_else_expr():
+    """Ternary operator
+    condition ? x : y
+    x if condition else y
+    """
     def process(p):
         (((body, op1), condition), op2), else_body = p
         return avo_ast.TernaryOpAST(body, op1, condition, op2, else_body)
@@ -75,6 +85,9 @@ def if_else_expr():
 
 
 def lambda_stmt():
+    """Lambda statement
+    (a, b, c) => {...}
+    """
     def process(p):
         (((((_, args), _), _), _), statements), _ = p
         arguments = []
@@ -84,7 +97,6 @@ def lambda_stmt():
             else:
                 arguments.append(avo_ast.ArgumentAST(arg.value[0][0], arg.value[0][1][1]))
         return avo_ast.LambdaStmt(arguments, statements)
-
     return (
             keyword('(') + Rep(id_tag + Opt(operator('=') + Lazy(expression)) + Opt(keyword(','))) +
             keyword(')') + operator('=>') + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}')
@@ -92,6 +104,9 @@ def lambda_stmt():
 
 
 def module_obj_expr():
+    """Module object expression
+    x.y
+    """
     def process(p):
         (module, _), var = p
         return avo_ast.ModuleCallAST(module, var)
@@ -99,7 +114,7 @@ def module_obj_expr():
 
 
 def id_or_module():
-    return class_property_stmt() | module_obj_expr() | id_tag
+    return class_property_expr() | module_obj_expr() | id_tag
 
 
 def a_expr_value():
@@ -110,7 +125,7 @@ def a_expr_value():
             Lazy(read_stmt) |
             brace_expr() |
             module_obj_expr() |
-            Lazy(class_property_stmt) |
+            Lazy(class_property_expr) |
             (num ^ (lambda x: avo_ast.IntAST(x))) |
             (float_num ^ (lambda x: avo_ast.FloatAST(x))) |
             (id_tag ^ (lambda x: avo_ast.VarAST(x))) |
@@ -166,12 +181,21 @@ def process_relop(p):
 
 
 def b_expr_relop():
+    """Relation operation expression
+    x >= y
+    x == y
+    x != y
+    etc
+    """
     return (
             a_expr() + any_op_in_list(relational_operators) + a_expr()
     ) ^ process_relop
 
 
 def b_expr_not():
+    """Not expression
+    not x
+    """
     return (keyword('not') + Lazy(b_expr_term)) ^ (lambda p: avo_ast.NotOp(p[1]))
 
 
@@ -200,6 +224,9 @@ def b_expr():
 
 
 def brace_expr():
+    """Brace expression
+    x[y][z]
+    """
     def process(p):
         (((obj, _), v), _), v_arr = p
         arr = []
@@ -220,7 +247,10 @@ def expr():
     )
 
 
-def class_property_stmt():
+def class_property_expr():
+    """Class property statement
+    x::y
+    """
     def process(p):
         ((is_super, name), _), var = p
         if is_super is not None:
@@ -235,6 +265,9 @@ def expression():
 
 # --== statements ==-- #
 def assign_stmt():
+    """Assign statement
+    var x = y
+    """
     def process(p):
         ((_, name), _), e = p
         return avo_ast.AssignStmt(name, e, False, True)
@@ -244,6 +277,9 @@ def assign_stmt():
 
 
 def assign_const_stmt():
+    """Assign constant statement
+    const x = y
+    """
     def process(p):
         ((_, name), _), e = p
         return avo_ast.AssignStmt(name, e, True, True)
@@ -251,6 +287,9 @@ def assign_const_stmt():
 
 
 def reassign_stmt():
+    """Reassign statement
+    x = y
+    """
     def process(p):
         (name, op), e = p
         return avo_ast.AssignStmt(name, e, False, False, op)
@@ -258,6 +297,10 @@ def reassign_stmt():
 
 
 def unary_op_stmt():
+    """Unary operator statement
+    x++
+    ++x
+    """
     def process(p):
         sym, name = p
         if sym not in unary_operators:
@@ -280,6 +323,17 @@ def block_stmt():
 
 
 def if_stmt():
+    """if-elif-else statement
+    if condition1 {
+        body1
+    } elif condition2 {
+        body2
+    } elif condition3 {
+        body3
+    } else {
+        body4
+    }
+    """
     def process(p):
         (((((_, condition), _), body), _), elif_array), false_p = p
         if false_p:
@@ -302,6 +356,11 @@ def if_stmt():
 
 
 def while_stmt():
+    """While statement
+    while condition {
+        body
+    }
+    """
     def process(p):
         (((_, condition), _), body), _ = p
         return avo_ast.WhileStmt(condition, body)
@@ -310,14 +369,23 @@ def while_stmt():
 
 
 def break_stmt():
+    """Break statement
+    break
+    """
     return keyword('break') ^ (lambda x: avo_ast.BreakStmt())
 
 
 def continue_stmt():
+    """Continue statement
+    continue
+    """
     return keyword('continue') ^ (lambda x: avo_ast.ContinueStmt())
 
 
 def echo_stmt():
+    """Echo statement
+    echo(x, y, z, ...)
+    """
     def process(p):
         (_, data), _ = p
         return avo_ast.EchoStmt(data)
@@ -332,6 +400,9 @@ def echo_stmt():
 
 
 def read_stmt():
+    """Read statement
+    x = read(...)
+    """
     def process(p):
         _, text = p
         return avo_ast.ReadStmt(text)
@@ -339,6 +410,11 @@ def read_stmt():
 
 
 def func_stmt():
+    """Function assign statement
+    func name(args) {
+        body
+    }
+    """
     def process(p):
         ((((((_, func_name), _), args), _), _), statements), _ = p
         arguments = []
@@ -356,6 +432,9 @@ def func_stmt():
 
 
 def interface_func_stmt():
+    """Interface function statement
+    func name()
+    """
     def process(p):
         (((_, func_name), _), args), _ = p
         arguments = []
@@ -373,6 +452,12 @@ def interface_func_stmt():
 
 
 def call_stmt():
+    """Call statement
+    func_name(args)
+    func_name(args) with {
+        lambda body
+    }
+    """
     def process(p):
         (((func_name, _), args), _), l = p
         arguments = []
@@ -387,11 +472,14 @@ def call_stmt():
     return (
         id_or_module() + keyword('(') +
         Rep(Opt(id_tag + operator('=')) + expression() + Opt(keyword(','))) +
-        keyword(')') + Opt(operator('=>') + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}'))
+        keyword(')') + Opt(keyword('with') + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}'))
     ) ^ process
 
 
 def return_stmt():
+    """Return statement
+    return x
+    """
     def process(p):
         _, return_value = p
         return avo_ast.ReturnStmt(return_value)
@@ -399,6 +487,11 @@ def return_stmt():
 
 
 def for_stmt():
+    """For statement
+    for var x = y; condition; x++ {
+        body
+    }
+    """
     def process(p):
         (((((((_, var), _), cond), _), action), _), body), _ = p
         return avo_ast.ForStmt(var, cond, action, body)
@@ -410,6 +503,11 @@ def for_stmt():
 
 
 def foreach_stmt():
+    """Foreach statement
+    for i in object {
+        body
+    }
+    """
     def process(p):
         (((((_, var), _), val), _), body), _ = p
         return avo_ast.ForStmt(var, val, body, None)
@@ -420,6 +518,11 @@ def foreach_stmt():
 
 
 def import_stmt():
+    """Import statement
+    import module
+    import a1, a2, a3, ...
+    from module_name import a, b, c, ...
+    """
     def process(p):
         ((x, module), _), objects = p
         objects = [i.value[0] for i in objects]
@@ -436,6 +539,13 @@ def import_stmt():
 
 
 def switch_case_stmt():
+    """Switch-case-else statement
+    switch object {
+        case x {body1}
+        case [y, z, w] {body2}
+        else {body3}
+    }
+    """
     def process(p):
         ((((_, var), _), cases), else_body), _ = p
         cases_list = []
@@ -457,6 +567,11 @@ def switch_case_stmt():
 
 
 def assign_class_stmt():
+    """Class assign statement
+    [abstract] class MyClass {
+        body
+    }
+    """
     def process(p):
         ((((((prefix, _), name), inherit), interfaces), _), body), _ = p
         if inherit:
@@ -475,6 +590,11 @@ def assign_class_stmt():
 
 
 def assign_interface_stmt():
+    """Interface assign statement
+    interface Name {
+        body
+    }
+    """
     def process(p):
         (((_, name), _), body), _ = p
         return avo_ast.InterfaceStmt(name, body)
@@ -484,6 +604,7 @@ def assign_interface_stmt():
 
 
 def class_body():
+    """Class body"""
     def process(p):
         return avo_ast.StmtList(p)
     return Rep(
@@ -492,6 +613,7 @@ def class_body():
 
 
 def interface_body():
+    """Interface body"""
     def process(p):
         return avo_ast.StmtList(p)
     return Rep(
@@ -500,6 +622,11 @@ def interface_body():
 
 
 def init_class_stmt():
+    """Assign class init func
+    init(args) {
+        body
+    }
+    """
     def process(p):
         (((_, args), _), body), _ = p
         arguments = []
@@ -538,6 +665,13 @@ def interface_body_stmt():
 
 
 def try_catch_stmt():
+    """Try-catch statement
+    try {
+        error code
+    } catch e {
+        catch error
+    }
+    """
     def process(p):
         ((((((_, try_body), _), _), e_name), _), catch_body), _ = p
         return avo_ast.TryCatchStmt(try_body, e_name, catch_body)
