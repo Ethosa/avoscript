@@ -33,7 +33,11 @@ async def index(code: Code):
     if parsed is not None:
         x = StdString()
         sys.stdout = x
-        parsed.value.eval()
+        try:
+            parsed.value.eval()
+        except Exception as e:
+            sys.stdout = sys.__stdout__
+            print(x.out, e)
         sys.stdout = sys.__stdout__
         return {
             'response': x.out
