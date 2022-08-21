@@ -1,4 +1,4 @@
-const API_DOMEN = "localhost:8000"
+const API_DOMEN = "109.248.133.17:8000"
 const API_URL = `http://${API_DOMEN}/`
 
 /**
