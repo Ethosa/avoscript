@@ -1,118 +1,63 @@
 <template>
-  <div ref='editor' class='w-full h-full'>
+  <div class="w-full h-full">
+    <div ref="editor" class="w-full h-2/3">
+
+    </div>
+    <div ref="output" class="w-full h-1/3">
+
+    </div>
+    <div
+      class="absolute flex z-50 right-10 bottom-10 text-5xl text-gray-50 hover:text-gray-300 active:text-gray-500 cursor-pointer select-none"
+      @click="exec()"
+    >
+      <span
+        class="material-symbols-outlined scale-[3]"
+      >play_circle</span>
+    </div>
   </div>
 </template>
 
 
 <script>
 import {editor, languages} from 'monaco-editor';
+import AVOScript from '../mixins/avoscript.js'
+import API from '../mixins/api.js'
 
 export default {
   name: 'App',
   components: {
   },
+  mixins: [AVOScript, API],
   data() {
     return {
       registered: false,
-      config: {
+      loaderStates: [
+        'Executing \\',
+        'Executing |',
+        'Executing /',
+        'Executing -',
+      ],
+      loaderState: 0,
+      loaderInterval: null,
+      editorConfig: {
         value: `# Example program\nclass Main{\n\tfunc main() {\n\t\techo('Hello world!')\n\t}\n}\n\nMain::main()\n`,
         language: 'AVOScript',
         theme: 'AVOScriptTheme',
         wordWrap: 'on',
         fontSize: 24,
+        automaticLayout: true,
       },
-      AVOScriptTheme: {
-        base: 'vs-dark',
-        inherit: true,
-        rules: [
-          {background: '14131b'},
-          {token: 'keyword', foreground: 'da4f3b'},
-          {token: 'string.curly', foreground: 'da4f3b'},
-          {token: 'operator', foreground: '8d6695'},
-          {token: 'number', foreground: 'e78d0d'},
-          {token: 'className', foreground: 'f1a910'},
-          {token: 'comment', foreground: '5e4c58'},
-          {token: 'builtin', foreground: 'ff37ff'},
-          {token: 'function', foreground: '0096bb'},
-          {token: 'string', foreground: 'e0cd15'},
-          {token: 'boolean', foreground: 'a5552c'},
-        ],
-        colors: {
-          'editor.foreground': '#fbf9f2',
-          'editor.background': '#14131b'
-        }
-      },
-      AVOScript: {
-        defaultToken: 'text',
-        brackets: [
-          { open: '(', close: ')', token: 'bracket.parenthesis'},
-          { open: '[', close: ']', token: 'bracket.bracket'},
-          { open: '{', close: '}', token: 'bracket.curly'},
-        ],
-        keywords: [
-          'abstract', 'class', 'interface', 'of', 'func', 'const', 'var', 'if', 'elif', 'else',
-          'for', 'while', 'break', 'continue', 'return', 'switch', 'case', 'try', 'catch', 'import',
-          'from',
-        ],
-        operators: [
-          '&&', 'and', '||', 'or', '+', '-', '/', '*', '%', '^', '$', '@', '!',
-          '=', '+=', '-=', '/=', '*=', '++', '--', '==', '>=', '<=', '=>', '->',
-          '!=', '>', '<', 'in',
-        ],
-        builtin: [
-          'echo', 'read', 'range', 'randf', 'randi', 'length', 'string',
-          'int', 'float'
-        ],
-        booleans: [
-          'true', 'false', 'on', 'off', 'enable', 'disable'
-        ],
-        tokenizer: {
-          root: [
-            [/'/, 'string', '@string1'],
-            [/"/, 'string', '@string2'],
-            {include: '@common'},
-            [/#\[/, 'comment', '@comment'],
-            [/(^#.*$)/, 'comment'],
-          ],
-          common: [
-            [/[a-zA-Z][a-zA-Z0-9_]*(?=\()/, {
-              cases: {
-                '@builtin': 'builtin',
-                '@default': 'function'
-              }
-            }],
-            [/[A-Z][a-zA-Z0-9_]*/, 'className'],
-            [/[a-z][a-zA-Z0-9_]*/, {
-              cases: {
-                '@keywords': 'keyword',
-                '@operators': 'operator',
-                '@builtin': 'builtin',
-                '@booleans': 'boolean',
-              }
-            }],
-            [/[><!=\-/+\-?*%$@&^:~]/, 'operator'],
-            [/[0-9]+/, 'number'],
-          ],
-          comment: [
-            [/\]#/, 'comment', '@pop'],
-            [/[\s\S]/, 'comment'],
-          ],
-          string1: [
-            [/'/, 'string', '@pop'],
-            [/\$[a-zA-Z][a-zA-Z0-9_]*/, 'keyword'],
-            [/\$\{/, 'string.curly', '@stringCurly'],
-            [/./, 'string'],
-          ],
-          string2: [
-            [/"/, 'string', '@pop'],
-            [/\$[a-zA-Z][a-zA-Z0-9_]*/, 'keyword'],
-            [/\$\{/, 'string.curly', '@stringCurly'],
-            [/./, 'string'],
-          ],
-          stringCurly: [
-            [/\}/, 'string.curly', '@pop'],
-            {include: '@common'},
-          ],
+      outputConfig: {
+        value: `Output will here`,
+        language: 'shell',
+        theme: 'AVOScriptTheme',
+        wordWrap: 'on',
+        lineNumbers: 'off',
+        fontSize: 20,
+        readOnly: true,
+        automaticLayout: true,
+        minimap: {
+          enabled: false
         }
       }
     }
@@ -172,21 +117,45 @@ export default {
       ]
       return {suggestions: s}
     },
+    loader() {
+      if (this.loaderState == 3)
+        this.loaderState = 0
+      else
+        this.loaderState++
+      this.output.setValue(this.loaderStates[this.loaderState])
+    },
+    async exec() {
+      if (this.loaderInterval == null)
+        this.loaderInterval = setInterval(this.loader, 100)
+      var code = this.editor.getValue()
+      var res = await API.exec(code)
+      if (this.loaderInterval != null)
+        clearInterval(this.loaderInterval)
+        this.loaderInterval = null
+      if ('response' in res)
+        this.output.setValue(res.response)
+      else
+        this.output.setValue(res.error)
+    },
   },
   mounted() {
     if (!this.registered) {
       this.registered = true
       languages.register({'id': 'AVOScript'})
-      languages.setMonarchTokensProvider('AVOScript', this.AVOScript)
+      languages.setMonarchTokensProvider('AVOScript', AVOScript.AVOScript)
       languages.registerCompletionItemProvider('AVOScript', {provideCompletionItems: this.completions})
-      editor.defineTheme('AVOScriptTheme', this.AVOScriptTheme)
+      editor.defineTheme('AVOScriptTheme', AVOScript.AVOScriptTheme)
     }
     if (this.editor)
       this.editor.dispose()
-    this.editor = editor.create(this.$refs.editor, this.config)
+    if (this.output)
+      this.output.dispose()
+    this.editor = editor.create(this.$refs.editor, this.editorConfig)
+    this.output = editor.create(this.$refs.output, this.outputConfig)
   },
   beforeUnmount() {
     this.editor && this.editor.dispose()
+    this.output && this.output.dispose()
   }
 }
 </script>

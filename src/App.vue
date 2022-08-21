@@ -1,5 +1,5 @@
 <template>
-  <div class="w-screen h-screen max-h-screen flex text-white bg-[#14131b] font-mono overflow-hidden">
+  <div class="w-screen h-screen flex text-white bg-[#14131b] font-mono overflow-hidden">
     <div
       id="toolbar"
       class="absolute left-0 top-0 w-screen h-12 z-40 text-2xl bg-[#18171f] shadow-md flex flex-row justify-start items-center px-5"
