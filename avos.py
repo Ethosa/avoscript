@@ -47,14 +47,14 @@ parser.set_defaults(
 
 
 def main():
-    try:
-        from avoscript import lvl
-    except ImportError:
-        from src import lvl
     args = parser.parse_args()
     signal = Signal()
     signal.NEED_FREE = False
     signal.VERBOSE = args.verbose
+    env = [{}]
+    consts = [{}]
+    lvl = LevelIndex()
+    lvl.inc()
 
     if args.version:
         print(f"{Fore.LIGHTRED_EX}AVOScript{Fore.RESET} {Fore.LIGHTCYAN_EX}{version}{Fore.RESET}")
@@ -69,15 +69,16 @@ def main():
         print(f"{Fore.LIGHTGREEN_EX}>>>{Fore.RESET} ", end="")
         source = input()
         while source != 'exit':
-            imp_parser(Lexer.lex(source)).value.eval([], [], LevelIndex(), {}, signal)
+            signal.NO_CREATE_LEVEL = True
+            imp_parser(Lexer.lex(source)).value.eval(env, consts, lvl, {}, signal)
             print(f"{Fore.LIGHTGREEN_EX}>>>{Fore.RESET} ", end="")
             source = input()
         print(f"Exited via {Fore.LIGHTRED_EX}exit{Fore.RESET} command")
         exit(0)
     elif args.script:
-        imp_parser(Lexer.lex(args.script)).value.eval([], [], LevelIndex(), {}, signal)
+        imp_parser(Lexer.lex(args.script)).value.eval(env, consts, lvl, {}, signal)
     elif args.file:
-        imp_parser(Lexer.lex_file(args.file)).value.eval([], [], LevelIndex(), {}, signal)
+        imp_parser(Lexer.lex_file(args.file)).value.eval(env, consts, lvl, {}, signal)
 
 
 if __name__ == '__main__':
