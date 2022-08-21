@@ -2,7 +2,7 @@ from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from avoscript import imp_parser, Lexer, StdString
+from avoscript import imp_parser, Lexer, StdString, LevelIndex, Signal
 import sys
 
 
@@ -29,13 +29,29 @@ async def index(code: Code):
                 'error': 'code too large'
             }
         )
-    parsed = imp_parser(Lexer.lex(code.value))
+    lexed = ''
+    try:
+        lexed = Lexer.lex(code.value)
+    except SystemExit as e:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={'error': f'[ERROR]: SyntaxError - {e}'}
+        )
+    parsed = None
+    try:
+        parsed = imp_parser(lexed)
+    except RuntimeError as e:
+
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={'error': f'[ERROR]: SyntaxError - {e}'}
+        )
     if parsed is not None:
         x = StdString()
         sys.stdout = x
         try:
-            parsed.value.eval()
-        except Exception as e:
+            parsed.value.eval([], [], LevelIndex(), {}, Signal())
+        except SystemExit as e:
             sys.stdout = sys.__stdout__
             print(x.out, e)
         sys.stdout = sys.__stdout__
