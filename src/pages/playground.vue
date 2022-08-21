@@ -1,13 +1,12 @@
 <template>
   <div class="w-full h-full">
-    <div ref="editor" class="w-full h-2/3">
-
-    </div>
-    <div ref="output" class="w-full h-1/3">
-
-    </div>
+    <div ref="editor" class="w-full h-2/3"></div>
+    <div ref="output" class="w-full h-1/3"></div>
     <div
-      class="transition ease-in-out hover:scale-[1.05] active:scale-[0.95]
+      class="transition ease-in-out
+             desktop:scale-[1] desktop:hover:scale-[1.05] desktop:active:scale-[0.95]
+             tablet:scale-[0.8] tablet:hover:scale-[0.85] tablet:active:scale-[0.75]
+             mobile:scale-[0.6] mobile:hover:scale-[0.65] mobile:active:scale-[0.55]
              absolute flex z-50 right-16 bottom-16
              text-5xl text-gray-50 hover:text-gray-300 active:text-gray-500
              cursor-pointer select-none"
@@ -127,6 +126,9 @@ export default {
         this.loaderState++
       this.output.setValue(this.loaderStates[this.loaderState])
     },
+    /**
+     * Calling API/exec method
+     */
     async exec() {
       if (this.loaderInterval == null)
         this.loaderInterval = setInterval(this.loader, 100)
@@ -140,6 +142,18 @@ export default {
       else
         this.output.setValue(res.error)
     },
+    /**
+     * Called when web-page resizing
+     */
+    onResize() {
+      const w = window.innerWidth
+      this.editor && this.editor.updateOptions({
+        fontSize: (
+          w > 0 && w < 768 ? 14:
+          w >= 768 && w < 1023 ? 18 : 24
+        )
+      })
+    }
   },
   mounted() {
     if (!this.registered) {
@@ -155,11 +169,13 @@ export default {
       this.output.dispose()
     this.editor = editor.create(this.$refs.editor, this.editorConfig)
     this.output = editor.create(this.$refs.output, this.outputConfig)
+    window.addEventListener("resize", this.onResize)
   },
   beforeUnmount() {
     this.editor && this.editor.dispose()
     this.output && this.output.dispose()
-  }
+    window.removeEventListener("resize", this.onResize)
+  },
 }
 </script>
 

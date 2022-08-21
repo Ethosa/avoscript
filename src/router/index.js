@@ -1,6 +1,5 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 import home from "../pages/home.vue";
-import aboutPage from "../pages/aboutPage.vue";
 import playground from "../pages/playground.vue";
 import notFound from "../pages/notFound.vue";
 
@@ -13,10 +12,6 @@ const routes = [
     path: "/playground",
     name: "playground",
     component: playground,
-  }, {
-    path: "/about",
-    name: "aboutPage",
-    component: aboutPage,
   }, {
     path: "/:catchAll(.*)",
     name: "notFound",

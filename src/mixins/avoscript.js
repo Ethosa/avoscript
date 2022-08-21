@@ -30,7 +30,7 @@ export default {
         keywords: [
             'abstract', 'class', 'interface', 'of', 'func', 'const', 'var', 'if', 'elif', 'else',
             'for', 'while', 'break', 'continue', 'return', 'switch', 'case', 'try', 'catch', 'import',
-            'from', 'this',
+            'from', 'this', 'with', 'super',
         ],
         operators: [
             '&&', 'and', '||', 'or', '+', '-', '/', '*', '%', '^', '$', '@', '!',

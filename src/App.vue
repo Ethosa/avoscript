@@ -2,11 +2,15 @@
   <div class="w-screen h-screen flex text-white bg-[#14131b] font-mono overflow-hidden">
     <div
       id="toolbar"
-      class="absolute left-0 top-0 w-screen h-12 z-40 text-2xl bg-[#18171f] shadow-md flex flex-row justify-start items-center px-5"
+      class="absolute left-0 top-0 w-screen h-12 z-40
+             desktop:text-2xl tablet:text-xl mobile:text-lg
+             bg-[#18171f] shadow-md flex flex-row justify-start items-center px-5"
     >
       <div class="flex w-5/6">
         <div
-          class="text-3xl font-bold text-gray-50 hover:text-gray-400 active:text-gray-600 select-none cursor-pointer"
+          class="desktop:text-3xl tablet:text-2xl mobile:text-xl font-bold
+               text-gray-50 hover:text-gray-400active:text-gray-600
+               select-none cursor-pointer"
         @click="mainPage()"
         >
           AVOScript
@@ -18,12 +22,6 @@
           @click="playgroundPage()"
         >
           PLAYGROUND
-        </div>
-        <div
-          class="text-gray-50 hover:text-gray-400 active:text-gray-600 select-none cursor-pointer"
-          @click="aboutPage()"
-        >
-          ABOUT
         </div>
       </div>
     </div>
@@ -48,9 +46,6 @@ export default {
     },
     playgroundPage() {
       this.$router.push("/playground")
-    },
-    aboutPage() {
-      this.$router.push("/about")
     },
   },
   mounted() {
