@@ -1111,6 +1111,8 @@ class CallStmt(Stmt):
         has_var, level, is_const = has_variable(self.name, env, consts)
         f = None
         init_obj = None
+        current_class = signal.CURRENT_CLASS
+        in_class = signal.IN_CLASS
         if has_var and not is_const:
             f = env[level][self.name]
             if isinstance(f, dict):  # class
@@ -1125,10 +1127,10 @@ class CallStmt(Stmt):
         elif isinstance(self.name, ModuleCallAST):
             f = self.name.eval(env, consts, lvl, modules, signal)
         elif isinstance(self.name, ClassPropAST):
-            f = self.name.eval(env, consts, lvl, modules, signal)
-            if not signal.IN_CLASS:
+            if not signal.IN_CLASS and self.name.name != 'this':
                 signal.CURRENT_CLASS = self.name.name
             signal.IN_CLASS = True
+            f = self.name.eval(env, consts, lvl, modules, signal)
         if f is not None:
             args = [i for i in self.args if i.name is None]
             fargs = [i for i in f[0] if i.value is None]
@@ -1156,6 +1158,10 @@ class CallStmt(Stmt):
             signal.RETURN_VALUE = None
             signal.IN_CLASS = False
             signal.CURRENT_CLASS = None
+            if in_class:
+                signal.IN_CLASS = True
+            if current_class is not None:
+                signal.CURRENT_CLASS = current_class
             return returned
         else:
             args = [

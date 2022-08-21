@@ -75,3 +75,22 @@ Cat::say();  # static call
 a1::say();
 a2::say();
 a3::say();
+
+class X {
+	func b() {
+		echo("A")
+	}
+}
+
+class Y : X {
+	func b() {
+		echo("B")
+	}
+	func a() {
+		this::b()
+		super this::b()
+	}
+}
+
+Y::a()
+
