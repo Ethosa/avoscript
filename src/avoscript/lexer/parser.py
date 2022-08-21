@@ -195,8 +195,9 @@ def b_expr_relop():
 def b_expr_not():
     """Not expression
     not x
+    !x
     """
-    return (keyword('not') + Lazy(b_expr_term)) ^ (lambda p: avo_ast.NotOp(p[1]))
+    return (Alt(keyword('not'), operator('!')) + Lazy(b_expr_term)) ^ (lambda p: avo_ast.NotOp(p[1]))
 
 
 def b_expr_group():

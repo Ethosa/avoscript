@@ -3,9 +3,9 @@ from argparse import ArgumentParser
 from sys import exit
 
 try:
-    from avoscript import Lexer, imp_parser, Signal, ENV, ENV_CONSTS, version
+    from avoscript import Lexer, imp_parser, Signal, ENV, ENV_CONSTS, LevelIndex, version
 except ImportError:
-    from src import Lexer, imp_parser, Signal, ENV, ENV_CONSTS, version
+    from src import Lexer, imp_parser, Signal, ENV, ENV_CONSTS, LevelIndex, version
 
 from colorama import Fore, init
 
@@ -48,12 +48,13 @@ parser.set_defaults(
 
 def main():
     try:
-        from avoscript import STATEMENT_LIST_LEVEL
+        from avoscript import lvl
     except ImportError:
-        from src import STATEMENT_LIST_LEVEL
+        from src import lvl
     args = parser.parse_args()
-    Signal.NEED_FREE = False
-    Signal.VERBOSE = args.verbose
+    signal = Signal()
+    signal.NEED_FREE = False
+    signal.VERBOSE = args.verbose
 
     if args.version:
         print(f"{Fore.LIGHTRED_EX}AVOScript{Fore.RESET} {Fore.LIGHTCYAN_EX}{version}{Fore.RESET}")
@@ -67,19 +68,16 @@ def main():
         )
         print(f"{Fore.LIGHTGREEN_EX}>>>{Fore.RESET} ", end="")
         source = input()
-        STATEMENT_LIST_LEVEL += 1
-        ENV.append({})
-        ENV_CONSTS.append({})
         while source != 'exit':
-            imp_parser(Lexer.lex(source)).value.eval()
+            imp_parser(Lexer.lex(source)).value.eval([], [], LevelIndex(), {}, signal)
             print(f"{Fore.LIGHTGREEN_EX}>>>{Fore.RESET} ", end="")
             source = input()
         print(f"Exited via {Fore.LIGHTRED_EX}exit{Fore.RESET} command")
         exit(0)
     elif args.script:
-        imp_parser(Lexer.lex(args.script)).value.eval()
+        imp_parser(Lexer.lex(args.script)).value.eval([], [], LevelIndex(), {}, signal)
     elif args.file:
-        imp_parser(Lexer.lex_file(args.file)).value.eval()
+        imp_parser(Lexer.lex_file(args.file)).value.eval([], [], LevelIndex(), {}, signal)
 
 
 if __name__ == '__main__':

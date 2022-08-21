@@ -1,6 +1,5 @@
 from src.avoscript import *
 import unittest
-import sys
 
 
 class MyTestCase(unittest.TestCase):
@@ -58,7 +57,11 @@ class MyTestCase(unittest.TestCase):
     @staticmethod
     def test_7_eval():
         parsed = imp_parser(Lexer.lex_file('test_code.avo'))
-        parsed.value.eval()
+        env = []
+        consts = []
+        lvl = LevelIndex()
+        modules = {}
+        parsed.value.eval(env, consts, lvl, modules, Signal())
 
     @staticmethod
     def test_8_module_call():
@@ -72,34 +75,60 @@ class MyTestCase(unittest.TestCase):
     def test_a_if_else_expr():
         print(assign_stmt()(Lexer.lex('var a = 0 if false else 1;'), 0))
         print(assign_stmt()(Lexer.lex('var a = true ? 1 : 0;'), 0))
-        echo_stmt()(Lexer.lex('echo(100 if 2*2 == 4 else 0);'), 0).value.eval()
-        echo_stmt()(Lexer.lex('echo(2*2 == 4 ? true : false);'), 0).value.eval()
+        env = []
+        consts = []
+        lvl = LevelIndex()
+        modules = {}
+        echo_stmt()(Lexer.lex('echo(100 if 2*2 == 4 else 0);'), 0).value.eval(env, consts, lvl, modules, Signal())
+        echo_stmt()(Lexer.lex('echo(2*2 == 4 ? true : false);'), 0).value.eval(env, consts, lvl, modules, Signal())
 
     @staticmethod
     def test_b_assign_class_stmt():
         print(assign_class_stmt()(Lexer.lex('class A { }'), 0))
+        env = []
+        consts = []
+        lvl = LevelIndex()
+        modules = {}
         print(assign_class_stmt()(Lexer.lex('class B : A { var a = 0;  func main() {} }'), 0))
-        imp_parser(Lexer.lex_file('objects.avo')).value.eval()
+        imp_parser(Lexer.lex_file('objects.avo')).value.eval(env, consts, lvl, modules, Signal())
 
     @staticmethod
     def test_c_lambda_stmt():
         print(assign_stmt()(Lexer.lex('var a = () => {}'), 0))
-        imp_parser(Lexer.lex('var a = (a) => {echo(a, "lambda is cool");}; a(5);')).value.eval()
+        env = []
+        consts = []
+        lvl = LevelIndex()
+        modules = {}
+        imp_parser(
+            Lexer.lex('var a = (a) => {echo(a, "lambda is cool");}; a(5);')
+        ).value.eval(env, consts, lvl, modules, Signal())
 
     @staticmethod
     def test_d_modules():
         parsed = imp_parser(Lexer.lex_file('main.avo'))
-        parsed.value.eval()
+        env = []
+        consts = []
+        lvl = LevelIndex()
+        modules = {}
+        parsed.value.eval(env, consts, lvl, modules, Signal())
 
     @staticmethod
     def test_e_builtins():
         parsed = imp_parser(Lexer.lex_file('builtins_test.avo'))
-        parsed.value.eval()
+        env = []
+        consts = []
+        lvl = LevelIndex()
+        modules = {}
+        parsed.value.eval(env, consts, lvl, modules, Signal())
 
     @staticmethod
     def test_f_try_catch_stmt():
         parsed = imp_parser(Lexer.lex_file('try_catch.avo'))
-        parsed.value.eval()
+        env = []
+        consts = []
+        lvl = LevelIndex()
+        modules = {}
+        parsed.value.eval(env, consts, lvl, modules, Signal())
 
 
 if __name__ == '__main__':

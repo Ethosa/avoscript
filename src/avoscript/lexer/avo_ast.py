@@ -17,7 +17,6 @@ from . import Lexer, parser
 
 ENV = []
 ENV_CONSTS = []
-STATEMENT_LIST_LEVEL = -1
 MODULES = {
     # module_name: statement_list_level
 }
@@ -35,16 +34,18 @@ BUILTIN = {
 BUILTIN_BUILD = False
 
 
-def has_variable(name: str) -> Tuple[bool, int, bool]:
+def has_variable(name: str, env, consts) -> Tuple[bool, int, bool]:
     """
     Finds variable or constant in environments
     :param name: var/const name
+    :param env: variable environment
+    :param consts: constants environment
     :return: (contains, level index, is constant)
     """
-    for level in range(len(ENV) - 1, -1, -1):
-        if name in ENV[level]:
+    for level in range(len(env) - 1, -1, -1):
+        if name in env[level]:
             return True, level, False
-        elif name in ENV_CONSTS[level]:
+        elif name in consts[level]:
             return True, level, True
     return False, 0, False
 
@@ -56,6 +57,8 @@ class Signal:
     IN_CLASS = False
     IN_TRY = False
     IN_MAIN = False
+    IN_MODULE = False
+    CURRENT_MODULE = 'main'
     BREAK = False
     CONTINUE = False
     RETURN = False
@@ -71,25 +74,26 @@ class Signal:
     NEED_FREE = True
     VERBOSE = False
 
-    @staticmethod
-    def refresh():
-        Signal.IN_CYCLE = False
-        Signal.IN_FOR_CYCLE = False
-        Signal.IN_FUNCTION = False
-        Signal.IN_CLASS = False
-        Signal.IN_TRY = False
-        Signal.IN_MAIN = False
-        Signal.BREAK = False
-        Signal.CONTINUE = False
-        Signal.RETURN = False
-        Signal.NO_CREATE_LEVEL = False
-        Signal.CREATE_BACK_LEVEL = False
-        Signal.BACK_LEVEL = None
-        Signal.RETURN_VALUE = None
-        Signal.ARGUMENTS = None
-        Signal.KW_ARGUMENTS = None
-        Signal.CURRENT_CLASS = None
-        Signal.ERROR = None
+    def refresh(self):
+        self.IN_CYCLE = False
+        self.IN_FOR_CYCLE = False
+        self.IN_FUNCTION = False
+        self.IN_CLASS = False
+        self.IN_TRY = False
+        self.IN_MAIN = False
+        self.IN_MODULE = False
+        self.BREAK = False
+        self.CONTINUE = False
+        self.RETURN = False
+        self.NO_CREATE_LEVEL = False
+        self.CREATE_BACK_LEVEL = False
+        self.BACK_LEVEL = None
+        self.RETURN_VALUE = None
+        self.ARGUMENTS = None
+        self.KW_ARGUMENTS = None
+        self.CURRENT_CLASS = None
+        self.ERROR = None
+        self.CURRENT_MODULE = 'main'
 
 
 class StdString:
@@ -106,12 +110,38 @@ class StdString:
         sys.stdout = sys.__stdout__
 
 
+class LevelIndex:
+    def __init__(self):
+        self.i = -1
+
+    def __index__(self):
+        return self.i
+
+    def __add__(self, other: int) -> int:
+        return self.i + other
+
+    def __sub__(self, other: int) -> int:
+        return self.i - other
+
+    def __repr__(self) -> str:
+        return str(self.i)
+
+    def inc(self):
+        self.i += 1
+
+    def dec(self):
+        self.i -= 1
+
+
+STATEMENT_LIST_LEVEL = LevelIndex()
+
+
 # --== AST ==-- #
 class ASTExpr(AnyBase):
     def __repr__(self) -> str:
         return "AST expression"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         raise RuntimeError('nothing to eval')
 
 
@@ -119,7 +149,7 @@ class NullAST(ASTExpr):
     def __repr__(self) -> str:
         return "NullAST()"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         return None
 
 
@@ -130,7 +160,7 @@ class IntAST(ASTExpr):
     def __repr__(self) -> str:
         return f"IntAST({Fore.LIGHTYELLOW_EX}{self.i}{Fore.RESET})"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         return self.i
 
 
@@ -141,7 +171,7 @@ class FloatAST(ASTExpr):
     def __repr__(self) -> str:
         return f"FloatAST({Fore.LIGHTYELLOW_EX}{self.f}{Fore.RESET})"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         return self.f
 
 
@@ -152,7 +182,7 @@ class BoolAST(ASTExpr):
     def __repr__(self) -> str:
         return f"BoolAST({Fore.YELLOW}{self.b}{Fore.RESET})"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         return self.b
 
 
@@ -166,16 +196,16 @@ class StringAST(ASTExpr):
     def __repr__(self) -> str:
         return f'StringAST({Fore.LIGHTGREEN_EX}"{self.s}"{Fore.RESET})'
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         result = self.s
         matched = findall(StringAST.VARIABLE, result)
         for m in matched:
-            result = result.replace(m, str(VarAST(m[1:]).eval()))
+            result = result.replace(m, str(VarAST(m[1:]).eval(env, consts, lvl, modules, signal)))
         matched = findall(StringAST.EXPRESSION, result)
         for m in matched:
             result = result.replace(
                 m,
-                str(parser.expression()(Lexer.lex(m[2:-1]), 0).value.eval())
+                str(parser.expression()(Lexer.lex(m[2:-1]), 0).value.eval(env, consts, lvl, modules, signal))
             )
         return result
 
@@ -187,8 +217,8 @@ class ArrayAST(ASTExpr):
     def __repr__(self) -> str:
         return f"ArrayAST({self.arr})"
 
-    def eval(self):
-        return [i.eval() for i in self.arr]
+    def eval(self, env, consts, lvl, modules, signal):
+        return [i.eval(env, consts, lvl, modules, signal) for i in self.arr]
 
 
 class GeneratorAST(ASTExpr):
@@ -201,22 +231,21 @@ class GeneratorAST(ASTExpr):
     def __repr__(self) -> str:
         return f"GeneratorAST({self.val}, {self.var}, {self.obj}, {self.condition})"
 
-    def eval(self):
-        global STATEMENT_LIST_LEVEL
+    def eval(self, env, consts, lvl, modules, signal):
         result = []
-        ENV.append({})
-        ENV_CONSTS.append({})
-        STATEMENT_LIST_LEVEL += 1
-        for i in self.obj.eval():
-            ENV[STATEMENT_LIST_LEVEL][self.var] = i
+        env.append({})
+        consts.append({})
+        lvl.inc()
+        for i in self.obj.eval(env, consts, lvl, modules, signal):
+            env[lvl][self.var] = i
             if self.condition is not None:
-                if self.condition.eval():
-                    result.append(self.val.eval())
+                if self.condition.eval(env, consts, lvl, modules, signal):
+                    result.append(self.val.eval(env, consts, lvl, modules, signal))
             else:
-                result.append(self.val.eval())
-        STATEMENT_LIST_LEVEL -= 1
-        ENV_CONSTS.pop()
-        ENV.pop()
+                result.append(self.val.eval(env, consts, lvl, modules, signal))
+        lvl.dec()
+        consts.pop()
+        env.pop()
         return result
 
 
@@ -227,14 +256,14 @@ class VarAST(ASTExpr):
     def __repr__(self) -> str:
         return f"VarAST({self.var_name})"
 
-    def eval(self):
-        has_var, level, is_const = has_variable(self.var_name)
+    def eval(self, env, consts, lvl, modules, signal):
+        has_var, level, is_const = has_variable(self.var_name, env, consts)
         if has_var:
             if is_const:
-                return ENV_CONSTS[level][self.var_name]
+                return consts[level][self.var_name]
             else:
-                return ENV[level][self.var_name]
-        Signal.ERROR = f'{self.var_name} was used before assign'
+                return env[level][self.var_name]
+        signal.ERROR = f'{self.var_name} was used before assign'
 
 
 class ModuleCallAST(ASTExpr):
@@ -245,18 +274,18 @@ class ModuleCallAST(ASTExpr):
     def __repr__(self) -> str:
         return f"ModuleCallAST({self.name}, {self.obj})"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         in_built_in = (self.name, self.obj) in BUILTIN
-        if self.name in MODULES:
-            if self.obj not in ENV[MODULES[self.name]]:
-                Signal.ERROR = f"unknown module object {self.obj}"
+        if self.name in modules:
+            if self.obj not in env[modules[self.name]]:
+                signal.ERROR = f"unknown module object {self.obj}"
                 return
             elif in_built_in:
                 return None
-            return ENV[MODULES[self.name]][self.obj]
+            return env[modules[self.name]][self.obj]
         elif in_built_in:
             return None
-        Signal.ERROR = f"unknown module {self.obj}"
+        signal.ERROR = f"unknown module {self.obj}"
 
 
 class ClassPropAST(ASTExpr):
@@ -268,12 +297,12 @@ class ClassPropAST(ASTExpr):
     def __repr__(self) -> str:
         return f"ClassPropAST({self.name}, {self.prop})"
 
-    def eval(self):
-        if Signal.IN_CLASS and Signal.CURRENT_CLASS and self.name == 'this':
-            self.name = Signal.CURRENT_CLASS
-        has_var, level, is_const = has_variable(self.name)
+    def eval(self, env, consts, lvl, modules, signal):
+        if signal.IN_CLASS and signal.CURRENT_CLASS and self.name == 'this':
+            self.name = signal.CURRENT_CLASS
+        has_var, level, is_const = has_variable(self.name, env, consts)
         if has_var:
-            obj = ENV[level][self.name]
+            obj = env[level][self.name]
             result = None
             if self.is_super and obj['parent'] is not None:
                 obj = obj['parent']
@@ -293,9 +322,9 @@ class ClassPropAST(ASTExpr):
                 if obj['prefix'] == 'abstract':
                     print(f'[WARNING]: {self.prop} is abstract property')
                 return result
-            Signal.ERROR = f"unknown property {self.prop} of {self.name}"
+            signal.ERROR = f"unknown property {self.prop} of {self.name}"
         else:
-            Signal.ERROR = f"unknown class {self.name}"
+            signal.ERROR = f"unknown class {self.name}"
 
 
 class ArgumentAST(ASTExpr):
@@ -308,7 +337,7 @@ class ArgumentAST(ASTExpr):
     def __repr__(self) -> str:
         return f"ArgumentAST({self.name}, {self.value})"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         return self.name, self.value
 
 
@@ -322,45 +351,45 @@ class BraceAST(ASTExpr):
     def __repr__(self) -> str:
         return f"BraceAST({self.v})"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         result = None
         if isinstance(self.obj, str):
-            result = VarAST(self.obj).eval()
+            result = VarAST(self.obj).eval(env, consts, lvl, modules, signal)
         elif isinstance(self.obj, (ArrayAST, StringAST, CallStmt, ModuleCallAST, ClassPropAST)):
-            result = self.obj.eval()
+            result = self.obj.eval(env, consts, lvl, modules, signal)
         if result is not None:
             for i in self.v:
-                result = result[i.eval()]
+                result = result[i.eval(env, consts, lvl, modules, signal)]
         if result is not None:
             return result
-        Signal.ERROR = f"{self.obj.eval()} isn't indexed"
+        signal.ERROR = f"{self.obj.eval(env, consts, lvl, modules, signal)} isn't indexed"
 
 
 class BinOpAST(ASTExpr):
-    def __init__(self, op, l, r):
+    def __init__(self, op, left, r):
         self.op = op
-        self.l = l
+        self.left = left
         self.r = r
 
     def __repr__(self) -> str:
-        return f"BinOpAST({self.op}, {self.l}, {self.r})"
+        return f"BinOpAST({self.op}, {self.left}, {self.r})"
 
-    def eval(self):
-        rval = self.r.eval()
-        lval = self.l.eval()
+    def eval(self, env, consts, lvl, modules, signal):
+        r_val = self.r.eval(env, consts, lvl, modules, signal)
+        l_val = self.left.eval(env, consts, lvl, modules, signal)
         match self.op:
             case '*':
-                return lval * rval
+                return l_val * r_val
             case '/':
-                return lval / rval
+                return l_val / r_val
             case '-':
-                return lval - rval
+                return l_val - r_val
             case '+':
-                return lval + rval
+                return l_val + r_val
             case '%':
-                return lval % rval
+                return l_val % r_val
             case _:
-                Signal.ERROR = f'unknown operation {self.op}'
+                signal.ERROR = f'unknown operation {self.op}'
 
 
 class UnaryOpAST(ASTExpr):
@@ -371,26 +400,26 @@ class UnaryOpAST(ASTExpr):
     def __repr__(self) -> str:
         return f"UnaryOpAST({self.op}, {self.expr})"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         match self.op:
             case '++':
                 binop = BinOpAST('+', self.expr, IntAST(1))
                 if isinstance(self.expr, VarAST):
                     assign_stmt = AssignStmt(self.expr.var_name, binop)
-                    assign_stmt.eval()
-                    return self.expr.eval()
-                return binop.eval()
+                    assign_stmt.eval(env, consts, lvl, modules, signal)
+                    return self.expr.eval(env, consts, lvl, modules, signal)
+                return binop.eval(env, consts, lvl, modules, signal)
             case '--':
                 binop = BinOpAST('-', self.expr, IntAST(1))
                 if isinstance(self.expr, VarAST):
                     assign_stmt = AssignStmt(self.expr.var_name, binop)
-                    assign_stmt.eval()
-                    return self.expr.eval()
-                return binop.eval()
+                    assign_stmt.eval(env, consts, lvl, modules, signal)
+                    return self.expr.eval(env, consts, lvl, modules, signal)
+                return binop.eval(env, consts, lvl, modules, signal)
             case '-':
-                return -(self.expr.eval())
+                return -(self.expr.eval(env, consts, lvl, modules, signal))
             case _:
-                Signal.ERROR = f"unknown unary operation: {self.op}"
+                signal.ERROR = f"unknown unary operation: {self.op}"
 
 
 class TernaryOpAST(ASTExpr):
@@ -404,99 +433,108 @@ class TernaryOpAST(ASTExpr):
     def __repr__(self) -> str:
         return f"TernaryOpAST({self.first}, {self.op1}, {self.second}, {self.op2}, {self.third})"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         if self.op1 == '?' and self.op2 == ':':
-            if self.first.eval():
-                return self.second.eval()
-            return self.third.eval()
+            if self.first.eval(env, consts, lvl, modules, signal):
+                return self.second.eval(env, consts, lvl, modules, signal)
+            return self.third.eval(env, consts, lvl, modules, signal)
         elif self.op1 == 'if' and self.op2 == 'else':
-            if self.second.eval():
-                return self.first.eval()
-            return self.third.eval()
-        Signal.ERROR = f"unknown ternary operator {self.op1}, {self.op2}"
+            if self.second.eval(env, consts, lvl, modules, signal):
+                return self.first.eval(env, consts, lvl, modules, signal)
+            return self.third.eval(env, consts, lvl, modules, signal)
+        signal.ERROR = f"unknown ternary operator {self.op1}, {self.op2}"
 
 
 # --== Binary operations ==-- #
 class BinOpExpr(AnyBase):
-    def eval(self):
-        raise RuntimeError('unknown binary operaion')
+    def eval(self, env, consts, lvl, modules, signal):
+        raise RuntimeError('unknown binary operation')
 
 
 class RelativeOp(BinOpExpr):
-    def __init__(self, op, l, r):
+    def __init__(self, op, left, r):
         self.op = op
-        self.l = l
+        self.left = left
         self.r = r
 
     def __repr__(self) -> str:
-        return f"RelOp({self.l}, {self.op}, {self.r})"
+        return f"RelOp({self.left}, {self.op}, {self.r})"
 
-    def eval(self):
-        rval = self.r.eval()
-        lval = self.l.eval()
+    def eval(self, env, consts, lvl, modules, signal):
+        r_val = self.r.eval(env, consts, lvl, modules, signal)
+        l_val = self.left.eval(env, consts, lvl, modules, signal)
         match self.op:
             case '==':
-                return lval == rval
+                return l_val == r_val
             case '!=':
-                return lval != rval
+                return l_val != r_val
             case '>':
-                return lval > rval
+                return l_val > r_val
             case '<':
-                return lval < rval
+                return l_val < r_val
             case '>=':
-                return lval >= rval
+                return l_val >= r_val
             case '<=':
-                return lval <= rval
+                return l_val <= r_val
             case _:
-                Signal.ERROR = f'unknown operation {self.op}'
+                signal.ERROR = f'unknown operation {self.op}'
 
 
 class AndOp(BinOpExpr):
-    def __init__(self, l, r):
-        self.l = l
+    def __init__(self, left, r):
+        self.left = left
         self.r = r
 
     def __repr__(self) -> str:
-        return f"AndOp({self.l}, {self.r})"
+        return f"AndOp({self.left}, {self.r})"
 
-    def eval(self):
-        return self.l.eval() and self.r.eval()
+    def eval(self, env, consts, lvl, modules, signal):
+        return (
+                self.left.eval(env, consts, lvl, modules, signal) and
+                self.r.eval(env, consts, lvl, modules, signal)
+        )
 
 
 class OrOp(BinOpExpr):
-    def __init__(self, l, r):
-        self.l = l
+    def __init__(self, left, r):
+        self.left = left
         self.r = r
 
     def __repr__(self) -> str:
-        return f"OrOp({self.l}, {self.r})"
+        return f"OrOp({self.left}, {self.r})"
 
-    def eval(self):
-        return self.l.eval() or self.r.eval()
+    def eval(self, env, consts, lvl, modules, signal):
+        return (
+                self.left.eval(env, consts, lvl, modules, signal) or
+                self.r.eval(env, consts, lvl, modules, signal)
+        )
 
 
 class InOp(BinOpExpr):
-    def __init__(self, l, r):
-        self.l = l
+    def __init__(self, left, r):
+        self.left = left
         self.r = r
 
     def __repr__(self) -> str:
-        return f"InOp({self.l}, {self.r})"
+        return f"InOp({self.left}, {self.r})"
 
-    def eval(self):
-        return self.l.eval() in self.r.eval()
+    def eval(self, env, consts, lvl, modules, signal):
+        return (
+                self.left.eval(env, consts, lvl, modules, signal) in
+                self.r.eval(env, consts, lvl, modules, signal)
+        )
 
 
 class NotOp(BinOpExpr):
     def __init__(self, expr):
         self.expr = expr
 
-    def eval(self):
-        return not self.expr.eval()
+    def eval(self, env, consts, lvl, modules, signal):
+        return not self.expr.eval(env, consts, lvl, modules, signal)
 
 
 class Stmt(AnyBase):
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         raise RuntimeError("unknown statement")
 
 
@@ -511,8 +549,8 @@ class StmtList(Stmt):
         for stmt in self.statements:
             yield stmt
 
-    def eval(self):
-        global STATEMENT_LIST_LEVEL, BUILTIN_BUILD
+    def eval(self, env, consts, lvl, modules, signal):
+        global BUILTIN_BUILD
         if not BUILTIN_BUILD:
             BUILTIN_BUILD = True
             for attr in dir(math):
@@ -520,58 +558,52 @@ class StmtList(Stmt):
                 if callable(a) and not attr.startswith('_'):
                     BUILTIN[('math', attr)] = a
         in_main = False
-        if not Signal.IN_MAIN:
-            Signal.IN_MAIN = True
+        in_module = signal.IN_MODULE
+        if in_module:
+            signal.IN_MODULE = False
+        if not signal.IN_MAIN:
+            signal.IN_MAIN = True
             in_main = True
-        if not Signal.NO_CREATE_LEVEL:
-            STATEMENT_LIST_LEVEL += 1
-            ENV.append({})
-            ENV_CONSTS.append({})
-        if Signal.CREATE_BACK_LEVEL and Signal.BACK_LEVEL is None:
-            Signal.BACK_LEVEL = STATEMENT_LIST_LEVEL-1
+        if not signal.NO_CREATE_LEVEL:
+            lvl.inc()
+            env.append({})
+            consts.append({})
         # Arguments (if in function)
-        if Signal.IN_FUNCTION and Signal.ARGUMENTS:
-            for n, v in Signal.ARGUMENTS.items():
-                ENV[STATEMENT_LIST_LEVEL][n.name] = v.value.eval()
-            Signal.ARGUMENTS = None
-        if Signal.IN_FUNCTION and Signal.KW_ARGUMENTS:
-            for v in Signal.KW_ARGUMENTS:
-                ENV[STATEMENT_LIST_LEVEL][v.name] = v.value.eval()
-            Signal.KW_ARGUMENTS = None
+        if signal.IN_FUNCTION and signal.ARGUMENTS:
+            for n, v in signal.ARGUMENTS.items():
+                env[lvl][n.name] = v.value.eval(env, consts, lvl, modules, signal)
+            signal.ARGUMENTS = None
+        if signal.IN_FUNCTION and signal.KW_ARGUMENTS:
+            for v in signal.KW_ARGUMENTS:
+                env[lvl][v.name] = v.value.eval(env, consts, lvl, modules, signal)
+            signal.KW_ARGUMENTS = None
         # Statements
         result = None
         for stmt in self.statements:
-            if Signal.VERBOSE:
+            if signal.VERBOSE:
                 print(f'{Fore.CYAN}[STATEMENT]{Fore.RESET}: {stmt}')
             try:
-                result = stmt.eval()
+                result = stmt.eval(env, consts, lvl, modules, signal)
             except Exception as e:
                 traceback.print_exc()
-                Signal.ERROR = e
-            if Signal.ERROR is not None:
-                if not Signal.IN_TRY:
-                    print(f'{Fore.RED}RuntimeError: {Signal.ERROR}{Fore.RESET}')
+                signal.ERROR = e
+            if signal.ERROR is not None:
+                if not signal.IN_TRY:
+                    print(f'RuntimeError: {signal.ERROR} in module "{signal.CURRENT_MODULE}"')
                     exit(0)
                 break
-            if (Signal.BREAK or Signal.CONTINUE) and Signal.IN_CYCLE:
+            if (signal.BREAK or signal.CONTINUE) and signal.IN_CYCLE:
                 break
-            if Signal.RETURN and Signal.IN_FUNCTION:
+            if signal.RETURN and signal.IN_FUNCTION:
                 break
-        if not Signal.NO_CREATE_LEVEL and STATEMENT_LIST_LEVEL not in MODULES.values():
-            if not Signal.CREATE_BACK_LEVEL or Signal.BACK_LEVEL != STATEMENT_LIST_LEVEL:
-                STATEMENT_LIST_LEVEL -= 1
-                ENV.pop()
-                ENV_CONSTS.pop()
-        if Signal.CREATE_BACK_LEVEL and Signal.BACK_LEVEL == STATEMENT_LIST_LEVEL:
-            Signal.CREATE_BACK_LEVEL = False
-            Signal.BACK_LEVEL = None
-            STATEMENT_LIST_LEVEL += 1
-            ENV.append({})
-            ENV_CONSTS.append({})
-        if Signal.IN_MAIN and in_main:
-            Signal.IN_MAIN = False
+        if not signal.NO_CREATE_LEVEL and lvl not in modules.values() and not in_module:
+            lvl.dec()
+            env.pop()
+            consts.pop()
+        if signal.IN_MAIN and in_main:
+            signal.IN_MAIN = False
             if isinstance(self.statements[-1], EOFStmt):
-                self.statements[-1].eval()
+                self.statements[-1].eval(env, consts, lvl, modules, signal)
             return
         return result
 
@@ -594,7 +626,7 @@ class AssignStmt(Stmt):
     def __repr__(self) -> str:
         return f"AssignStmt({self.name}, {self.a_expr})"
 
-    def __assign_operation(self, val):
+    def __assign_operation(self, val, signal):
         if not self.is_assign:
             name = self.name
             if isinstance(name, str):
@@ -611,87 +643,87 @@ class AssignStmt(Stmt):
                 case '=':
                     pass
                 case _:
-                    Signal.ERROR = f"unknown operator {self.assign_op}"
+                    signal.ERROR = f"unknown operator {self.assign_op}"
         return val
 
-    def eval(self):
-        has_var, level, is_const = has_variable(self.name)
-        val = self.__assign_operation(self.a_expr)
+    def eval(self, env, consts, lvl, modules, signal):
+        has_var, level, is_const = has_variable(self.name, env, consts)
+        val = self.__assign_operation(self.a_expr, signal)
         if self.is_assign:
             # Assign var/const
             if self.assign_op != '=':
-                Signal.ERROR = f"{self.name} isn't assigned"
+                signal.ERROR = f"{self.name} isn't assigned"
                 return
-            if has_var and level == STATEMENT_LIST_LEVEL:
-                Signal.ERROR = f"{self.name} is assigned"
+            if has_var and level == lvl:
+                signal.ERROR = f"{self.name} is assigned"
                 return
             if self.is_const:
-                ENV_CONSTS[STATEMENT_LIST_LEVEL][self.name] = val.eval()
+                consts[lvl][self.name] = val.eval(env, consts, lvl, modules, signal)
             else:
-                ENV[STATEMENT_LIST_LEVEL][self.name] = val.eval()
+                env[lvl][self.name] = val.eval(env, consts, lvl, modules, signal)
         elif has_var:
             # Reassign
             if is_const:
-                ENV_CONSTS[level][self.name] = val.eval()
+                consts[level][self.name] = val.eval(env, consts, lvl, modules, signal)
             else:
-                ENV[level][self.name] = val.eval()
+                env[level][self.name] = val.eval(env, consts, lvl, modules, signal)
         elif isinstance(self.name, BraceAST):
             result = None
             obj = self.name
             if isinstance(obj.obj, str):
-                result = VarAST(obj.obj).eval()
+                result = VarAST(obj.obj).eval(env, consts, lvl, modules, signal)
             elif isinstance(obj.obj, (ArrayAST, StringAST, CallStmt, ModuleCallAST, ClassPropAST)):
-                result = obj.obj.eval()
+                result = obj.obj.eval(env, consts, lvl, modules, signal)
             if result is not None:
                 for i in obj.v[:-1]:
-                    i = i.eval()
-                    result = result[i.eval()]
+                    i = i.eval(env, consts, lvl, modules, signal)
+                    result = result[i.eval(env, consts, lvl, modules, signal)]
             if result is not None:
-                i = obj.v[-1].eval()
+                i = obj.v[-1].eval(env, consts, lvl, modules, signal)
                 if i == len(result):
-                    result.append(val.eval())
+                    result.append(val.eval(env, consts, lvl, modules, signal))
                 else:
-                    result[i] = val.eval()
+                    result[i] = val.eval(env, consts, lvl, modules, signal)
         elif isinstance(self.name, ModuleCallAST):
             module = self.name
-            if module.name not in MODULES:
-                Signal.ERROR = f"unknown module {module.name}"
+            if module.name not in modules:
+                signal.ERROR = f"unknown module {module.name}"
                 return
-            if module.obj in ENV[MODULES[module.name]]:
-                ENV[MODULES[module.name]][module.obj] = val.eval()
-            elif module.obj in ENV_CONSTS[MODULES[module.name]]:
-                ENV_CONSTS[MODULES[module.name]][module.obj] = val.eval()
+            if module.obj in env[modules[module.name]]:
+                env[modules[module.name]][module.obj] = val.eval(env, consts, lvl, modules, signal)
+            elif module.obj in consts[modules[module.name]]:
+                consts[modules[module.name]][module.obj] = val.eval(env, consts, lvl, modules, signal)
             else:
-                Signal.ERROR = f"unknown module property {module.obj}"
+                signal.ERROR = f"unknown module property {module.obj}"
                 return
         elif isinstance(self.name, ClassPropAST):
             obj = self.name
-            if Signal.IN_CLASS and Signal.CURRENT_CLASS and obj.name == 'this':
-                obj.name = Signal.CURRENT_CLASS
-            has_var, level, is_const = has_variable(obj.name)
+            if signal.IN_CLASS and signal.CURRENT_CLASS and obj.name == 'this':
+                obj.name = signal.CURRENT_CLASS
+            has_var, level, is_const = has_variable(obj.name, env, consts)
             if has_var and not is_const:
-                var = ENV[level][obj.name]
+                var = env[level][obj.name]
                 if obj.is_super and var['parent'] is not None:
                     var = var['parent']
                 if obj.prop in var['env']:
-                    var['env'][obj.prop] = val.eval()
+                    var['env'][obj.prop] = val.eval(env, consts, lvl, modules, signal)
                     return
                 if obj.prop in var['consts_env']:
-                    var['consts_env'][obj.prop] = val.eval()
+                    var['consts_env'][obj.prop] = val.eval(env, consts, lvl, modules, signal)
                     return
                 while var['parent']:
                     var = var['parent']
                     if obj.prop in var['env']:
-                        var['env'][obj.prop] = val.eval()
+                        var['env'][obj.prop] = val.eval(env, consts, lvl, modules, signal)
                         return
                     if obj.prop in var['consts_env']:
-                        var['consts_env'][obj.prop] = val.eval()
+                        var['consts_env'][obj.prop] = val.eval(env, consts, lvl, modules, signal)
                         return
-                Signal.ERROR = f"unknown property {obj.prop} in class {obj.name}"
+                signal.ERROR = f"unknown property {obj.prop} in class {obj.name}"
             else:
-                Signal.ERROR = f"unknown class {obj.name}"
+                signal.ERROR = f"unknown class {obj.name}"
         else:
-            Signal.ERROR = f"{self.name} isn't assigned"
+            signal.ERROR = f"{self.name} isn't assigned"
 
 
 class AssignClassStmt(Stmt):
@@ -705,37 +737,36 @@ class AssignClassStmt(Stmt):
     def __repr__(self) -> str:
         return f"AssignClassStmt({self.prefix + ' ' if self.prefix else ''}{self.name}, {self.inherit}, {self.body})"
 
-    def eval(self):
-        global STATEMENT_LIST_LEVEL
-        has_var, level, is_const = has_variable(self.name)
+    def eval(self, env, consts, lvl, modules, signal):
+        has_var, level, is_const = has_variable(self.name, env, consts)
         if not has_var:
-            Signal.NO_CREATE_LEVEL = True
-            ENV.append({})
-            ENV_CONSTS.append({})
-            STATEMENT_LIST_LEVEL += 1
-            self.body.eval()
+            signal.NO_CREATE_LEVEL = True
+            env.append({})
+            consts.append({})
+            lvl.inc()
+            self.body.eval(env, consts, lvl, modules, signal)
             if self.inherit:
-                has_var, level, is_const = has_variable(self.inherit)
+                has_var, level, is_const = has_variable(self.inherit, env, consts)
                 if has_var:
-                    self.inherit = ENV[level][self.inherit]
+                    self.inherit = env[level][self.inherit]
                 else:
-                    Signal.ERROR = f"unknown inherit class {self.inherit}"
+                    signal.ERROR = f"unknown inherit class {self.inherit}"
                     return
             must_have_data = []
             # implemented interfaces
             for interface in self.interfaces:
-                h, l, c = has_variable(interface)
+                h, l, c = has_variable(interface, env, consts)
                 if h:
-                    interface = ENV[l][interface]
+                    interface = env[l][interface]
                     must_have_data += [i for i in interface['env'].keys() if i not in must_have_data]
                     must_have_data += [i for i in interface['consts_env'].keys() if i not in must_have_data]
                 else:
-                    Signal.ERROR = f"unknown interface {interface} of class {self.name}"
+                    signal.ERROR = f"unknown interface {interface} of class {self.name}"
                     return
-            ENV[STATEMENT_LIST_LEVEL - 1][self.name] = {
+            env[lvl - 1][self.name] = {
                 'parent': self.inherit,
-                'env': deepcopy(ENV[STATEMENT_LIST_LEVEL]),
-                'consts_env': deepcopy(ENV_CONSTS[STATEMENT_LIST_LEVEL]),
+                'env': deepcopy(env[lvl]),
+                'consts_env': deepcopy(consts[lvl]),
                 'name': self.name,
                 'prefix': self.prefix,
                 'must_have_data': must_have_data
@@ -756,7 +787,7 @@ class AssignClassStmt(Stmt):
                         must_have_data += [i for i in parent['consts_env'].keys() if i not in must_have_data]
             # what is implemented
             for data in must_have_data:
-                obj = ENV[STATEMENT_LIST_LEVEL - 1][self.name]
+                obj = env[lvl - 1][self.name]
                 prefix = obj['prefix']
                 if (data in obj['env'] or data in obj['consts_env']) and prefix != 'abstract':
                     must_have_data.remove(data)
@@ -767,15 +798,15 @@ class AssignClassStmt(Stmt):
                     if (data in obj['env'] or data in obj['consts_env']) and prefix != 'abstract':
                         must_have_data.remove(data)
                         break
-            STATEMENT_LIST_LEVEL -= 1
-            ENV.pop()
-            ENV_CONSTS.pop()
-            Signal.NO_CREATE_LEVEL = False
+            lvl.dec()
+            env.pop()
+            consts.pop()
+            signal.NO_CREATE_LEVEL = False
             if len(must_have_data) > 0:
                 print(f"[WARNING]: {', '.join(must_have_data)} isn't implemented in {self.name}")
         else:
-            print(has_var, level, ENV[level][self.name])
-            Signal.ERROR = f"class {self.name} is assigned"
+            print(has_var, level, env[level][self.name])
+            signal.ERROR = f"class {self.name} is assigned"
 
 
 class InterfaceStmt(Stmt):
@@ -786,26 +817,25 @@ class InterfaceStmt(Stmt):
     def __repr__(self) -> str:
         return f"InterfaceStmt({self.name}, {self.body})"
 
-    def eval(self):
-        global STATEMENT_LIST_LEVEL
-        has_var, level, is_const = has_variable(self.name)
+    def eval(self, env, consts, lvl, modules, signal):
+        has_var, level, is_const = has_variable(self.name, env, consts)
         if not has_var:
-            Signal.NO_CREATE_LEVEL = True
-            ENV.append({})
-            ENV_CONSTS.append({})
-            STATEMENT_LIST_LEVEL += 1
-            self.body.eval()
-            ENV[STATEMENT_LIST_LEVEL - 1][self.name] = {
-                'env': deepcopy(ENV[STATEMENT_LIST_LEVEL]),
-                'consts_env': deepcopy(ENV_CONSTS[STATEMENT_LIST_LEVEL]),
+            signal.NO_CREATE_LEVEL = True
+            env.append({})
+            consts.append({})
+            lvl.inc()
+            self.body.eval(env, consts, lvl, modules, signal)
+            env[lvl - 1][self.name] = {
+                'env': deepcopy(env[lvl]),
+                'consts_env': deepcopy(consts[lvl]),
                 'name': self.name,
             }
-            STATEMENT_LIST_LEVEL -= 1
-            ENV.pop()
-            ENV_CONSTS.pop()
-            Signal.NO_CREATE_LEVEL = False
+            lvl.dec()
+            env.pop()
+            consts.pop()
+            signal.NO_CREATE_LEVEL = False
         else:
-            Signal.ERROR = f"{self.name} is assigned"
+            signal.ERROR = f"{self.name} is assigned"
 
 
 class InitClassStmt(Stmt):
@@ -816,11 +846,11 @@ class InitClassStmt(Stmt):
     def __repr__(self) -> str:
         return f"InitClassStmt({self.args})"
 
-    def eval(self):
-        if None in ENV[STATEMENT_LIST_LEVEL]:
-            Signal.ERROR = "this class equals init function"
+    def eval(self, env, consts, lvl, modules, signal):
+        if None in env[lvl]:
+            signal.ERROR = "this class equals init function"
             return
-        ENV[STATEMENT_LIST_LEVEL][None] = (self.args, self.body)
+        env[lvl][None] = (self.args, self.body)
 
 
 class IfStmt(Stmt):
@@ -833,20 +863,20 @@ class IfStmt(Stmt):
     def __repr__(self) -> str:
         return f"IfStmt({self.condition}, {self.body}, {self.else_body})"
 
-    def eval(self):
-        condition = self.condition.eval()
+    def eval(self, env, consts, lvl, modules, signal):
+        condition = self.condition.eval(env, consts, lvl, modules, signal)
         else_statement = True
         if condition:
-            self.body.eval()
+            self.body.eval(env, consts, lvl, modules, signal)
         else:
             for i in self.elif_array:
                 (((_, condition), _), stmt_list), _ = i
-                if condition.eval():
-                    stmt_list.eval()
+                if condition.eval(env, consts, lvl, modules, signal):
+                    stmt_list.eval(env, consts, lvl, modules, signal)
                     else_statement = False
                     break
         if self.else_body and else_statement:
-            self.else_body.eval()
+            self.else_body.eval(env, consts, lvl, modules, signal)
 
 
 class SwitchCaseStmt(Stmt):
@@ -857,21 +887,21 @@ class SwitchCaseStmt(Stmt):
     def __repr__(self) -> str:
         return f"SwitchCaseStmt({self.var}, {self.cases})"
 
-    def eval(self):
-        var = self.var.eval()
+    def eval(self, env, consts, lvl, modules, signal):
+        var = self.var.eval(env, consts, lvl, modules, signal)
         result = None
         for c in self.cases:
             if isinstance(c, CaseStmt):
                 if c.condition:
-                    val = c.condition.eval()
+                    val = c.condition.eval(env, consts, lvl, modules, signal)
                     if val == var:
-                        result = c.body.eval()
+                        result = c.body.eval(env, consts, lvl, modules, signal)
                         break
                     elif isinstance(val, (tuple, list)) and var in val:
-                        result = c.body.eval()
+                        result = c.body.eval(env, consts, lvl, modules, signal)
                         break
                 else:
-                    result = c.body.eval()
+                    result = c.body.eval(env, consts, lvl, modules, signal)
                     break
         return result
 
@@ -884,7 +914,7 @@ class CaseStmt(Stmt):
     def __repr__(self) -> str:
         return f"CaseStmt({self.condition}, {self.body})"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         pass
 
 
@@ -896,23 +926,23 @@ class WhileStmt(Stmt):
     def __repr__(self) -> str:
         return f"WhileStmt({self.condition}, {self.body})"
 
-    def eval(self):
-        condition = self.condition.eval()
+    def eval(self, env, consts, lvl, modules, signal):
+        condition = self.condition.eval(env, consts, lvl, modules, signal)
         while condition:
-            self.body.eval()
-            Signal.IN_CYCLE = True
-            if Signal.IN_CYCLE:
-                if Signal.CONTINUE:
-                    Signal.CONTINUE = False
+            self.body.eval(env, consts, lvl, modules, signal)
+            signal.IN_CYCLE = True
+            if signal.IN_CYCLE:
+                if signal.CONTINUE:
+                    signal.CONTINUE = False
                     continue
-                elif Signal.BREAK:
+                elif signal.BREAK:
                     break
-            if Signal.RETURN and Signal.IN_FUNCTION:
+            if signal.RETURN and signal.IN_FUNCTION:
                 break
-            condition = self.condition.eval()
-        Signal.IN_CYCLE = False
-        Signal.BREAK = False
-        Signal.CONTINUE = False
+            condition = self.condition.eval(env, consts, lvl, modules, signal)
+        signal.IN_CYCLE = False
+        signal.BREAK = False
+        signal.CONTINUE = False
 
 
 class ForStmt(Stmt):
@@ -925,54 +955,53 @@ class ForStmt(Stmt):
     def __repr__(self) -> str:
         return f"ForStmt({self.var}, {self.cond}, {self.action}, {self.body})"
 
-    def eval(self):
-        global STATEMENT_LIST_LEVEL
-        ENV.append({})
-        ENV_CONSTS.append({})
-        STATEMENT_LIST_LEVEL += 1
+    def eval(self, env, consts, lvl, modules, signal):
+        env.append({})
+        consts.append({})
+        lvl.inc()
         if self.body:  # for i = 0; i < 10; ++i; {}
-            self.var.eval()
-            condition = self.cond.eval()
+            self.var.eval(env, consts, lvl, modules, signal)
+            condition = self.cond.eval(env, consts, lvl, modules, signal)
             while condition:
-                self.body.eval()
-                Signal.IN_CYCLE = True
-                if Signal.IN_CYCLE:
-                    if Signal.CONTINUE:
-                        Signal.CONTINUE = False
+                self.body.eval(env, consts, lvl, modules, signal)
+                signal.IN_CYCLE = True
+                if signal.IN_CYCLE:
+                    if signal.CONTINUE:
+                        signal.CONTINUE = False
                         continue
-                    if Signal.BREAK:
+                    if signal.BREAK:
                         break
-                if Signal.IN_FUNCTION and Signal.RETURN:
+                if signal.IN_FUNCTION and signal.RETURN:
                     break
-                self.action.eval()
-                condition = self.cond.eval()
+                self.action.eval(env, consts, lvl, modules, signal)
+                condition = self.cond.eval(env, consts, lvl, modules, signal)
         else:  # for i in arr {}
-            for i in self.cond.eval():
-                ENV[STATEMENT_LIST_LEVEL][self.var] = i
-                Signal.IN_CYCLE = True
-                self.action.eval()
-        STATEMENT_LIST_LEVEL -= 1
-        ENV.pop()
-        ENV_CONSTS.pop()
-        Signal.IN_CYCLE = False
-        Signal.BREAK = False
-        Signal.CONTINUE = False
+            for i in self.cond.eval(env, consts, lvl, modules, signal):
+                env[lvl][self.var] = i
+                signal.IN_CYCLE = True
+                self.action.eval(env, consts, lvl, modules, signal)
+        lvl.dec()
+        env.pop()
+        consts.pop()
+        signal.IN_CYCLE = False
+        signal.BREAK = False
+        signal.CONTINUE = False
 
 
 class BreakStmt(Stmt):
     def __repr__(self) -> str:
         return "BreakStmt"
 
-    def eval(self):
-        Signal.BREAK = True
+    def eval(self, env, consts, lvl, modules, signal):
+        signal.BREAK = True
 
 
 class ContinueStmt(Stmt):
     def __repr__(self) -> str:
         return "ContinueStmt"
 
-    def eval(self):
-        Signal.CONTINUE = True
+    def eval(self, env, consts, lvl, modules, signal):
+        signal.CONTINUE = True
 
 
 class TryCatchStmt(Stmt):
@@ -984,22 +1013,21 @@ class TryCatchStmt(Stmt):
     def __repr__(self) -> str:
         return f"TryCatchStmt({self.try_body}, {self.e_name}, {self.catch_body})"
 
-    def eval(self):
-        global STATEMENT_LIST_LEVEL
-        Signal.IN_TRY = True
-        self.try_body.eval()
-        Signal.IN_TRY = False
-        if Signal.ERROR is not None:
-            Signal.NO_CREATE_LEVEL = True
-            ENV.append({})
-            ENV_CONSTS.append({})
-            STATEMENT_LIST_LEVEL += 1
-            ENV[STATEMENT_LIST_LEVEL][self.e_name] = Signal.ERROR
-            Signal.ERROR = None
-            self.catch_body.eval()
-            STATEMENT_LIST_LEVEL -= 1
-            ENV.pop()
-            ENV_CONSTS.pop()
+    def eval(self, env, consts, lvl, modules, signal):
+        signal.IN_TRY = True
+        self.try_body.eval(env, consts, lvl, modules, signal)
+        signal.IN_TRY = False
+        if signal.ERROR is not None:
+            signal.NO_CREATE_LEVEL = True
+            env.append({})
+            consts.append({})
+            lvl.inc()
+            env[lvl][self.e_name] = signal.ERROR
+            signal.ERROR = None
+            self.catch_body.eval(env, consts, lvl, modules, signal)
+            lvl.dec()
+            env.pop()
+            consts.pop()
 
 
 class EchoStmt(Stmt):
@@ -1009,16 +1037,16 @@ class EchoStmt(Stmt):
     def __repr__(self) -> str:
         return f"EchoStmt({self.data})"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         if isinstance(self.data, (Stmt, ASTExpr, BinOpExpr)):
-            val = self.data.eval()
+            val = self.data.eval(env, consts, lvl, modules, signal)
             if isinstance(val, tuple) and len(val) == 4:
                 print(f"class {val[3]}")
             else:
                 print(val)
         elif isinstance(self.data, (list, tuple)):
             for i in self.data:
-                val = i.eval()
+                val = i.eval(env, consts, lvl, modules, signal)
                 if isinstance(val, tuple) and len(val) == 4:
                     print(f"class {val[3]}", end=" ")
                 else:
@@ -1035,9 +1063,9 @@ class ReadStmt(Stmt):
     def __repr__(self) -> str:
         return f"ReadStmt({self.text})"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         if isinstance(self.text, ASTExpr):
-            return input(self.text.eval())
+            return input(self.text.eval(env, consts, lvl, modules, signal))
         elif isinstance(self.text, str):
             return self.text
 
@@ -1051,12 +1079,12 @@ class FuncStmt(Stmt):
     def __repr__(self) -> str:
         return f"FuncStmt({self.name}, {self.args}, {self.body})"
 
-    def eval(self):
-        has_var, level, is_const = has_variable(self.name)
-        if has_var and not is_const and level == STATEMENT_LIST_LEVEL:
-            Signal.ERROR = f"Function {self.name} is exists"
+    def eval(self, env, consts, lvl, modules, signal):
+        has_var, level, is_const = has_variable(self.name, env, consts)
+        if has_var and not is_const and level == lvl:
+            signal.ERROR = f"Function {self.name} is exists"
             return
-        ENV[STATEMENT_LIST_LEVEL][self.name] = (self.args, self.body)
+        env[lvl][self.name] = (self.args, self.body)
 
 
 class LambdaStmt(Stmt):
@@ -1067,7 +1095,7 @@ class LambdaStmt(Stmt):
     def __repr__(self) -> str:
         return f"LambdaStmt({self.args}, {self.body})"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
         return self.args, self.body
 
 
@@ -1079,60 +1107,65 @@ class CallStmt(Stmt):
     def __repr__(self) -> str:
         return f"CallStmt({self.name}, {self.args})"
 
-    def eval(self):
-        has_var, level, is_const = has_variable(self.name)
+    def eval(self, env, consts, lvl, modules, signal):
+        has_var, level, is_const = has_variable(self.name, env, consts)
         f = None
         init_obj = None
         if has_var and not is_const:
-            f = ENV[level][self.name]
+            f = env[level][self.name]
             if isinstance(f, dict):  # class
-                if not Signal.IN_CLASS:
-                    Signal.CURRENT_CLASS = self.name
-                Signal.IN_CLASS = True
+                if not signal.IN_CLASS:
+                    signal.CURRENT_CLASS = self.name
+                signal.IN_CLASS = True
                 init_obj = f
                 if None in f['env']:
                     f = f['env'][None]
                 else:
                     f = ([], StmtList([]))
         elif isinstance(self.name, ModuleCallAST):
-            f = self.name.eval()
+            f = self.name.eval(env, consts, lvl, modules, signal)
         elif isinstance(self.name, ClassPropAST):
-            f = self.name.eval()
-            if not Signal.IN_CLASS:
-                Signal.CURRENT_CLASS = self.name.name
-            Signal.IN_CLASS = True
-        if f:
+            f = self.name.eval(env, consts, lvl, modules, signal)
+            if not signal.IN_CLASS:
+                signal.CURRENT_CLASS = self.name.name
+            signal.IN_CLASS = True
+        if f is not None:
             args = [i for i in self.args if i.name is None]
             fargs = [i for i in f[0] if i.value is None]
             kwargs = [i for i in self.args if i.name is not None]
             fkwargs = [i for i in f[0] if i.value is not None]
             if len(args) != len(fargs):
-                Signal.ERROR = (
+                signal.ERROR = (
                     f"function {self.name} waited for {len(fargs)}, but got {len(args)} arguments"
                 )
                 return
-            Signal.ARGUMENTS = {n: v for n, v in zip(fargs, args)}
-            Signal.KW_ARGUMENTS = fkwargs + kwargs
-            if not Signal.IN_FUNCTION:
-                Signal.IN_FUNCTION = True
-                f[1].eval()
-                Signal.IN_FUNCTION = False
+            signal.ARGUMENTS = {n: v for n, v in zip(fargs, args)}
+            signal.KW_ARGUMENTS = fkwargs + kwargs
+            if not signal.IN_FUNCTION:
+                signal.IN_FUNCTION = True
+                f[1].eval(env, consts, lvl, modules, signal)
+                signal.IN_FUNCTION = False
             else:
-                f[1].eval()
+                f[1].eval(env, consts, lvl, modules, signal)
             if init_obj:  # initialized class
                 val = deepcopy(init_obj)
-                val['initialized'] = True
-                Signal.RETURN_VALUE = val
-            Signal.RETURN = False
+                signal.RETURN_VALUE = val
+            signal.RETURN = False
 
-            returned = Signal.RETURN_VALUE
-            Signal.RETURN_VALUE = None
-            Signal.IN_CLASS = False
-            Signal.CURRENT_CLASS = None
+            returned = signal.RETURN_VALUE
+            signal.RETURN_VALUE = None
+            signal.IN_CLASS = False
+            signal.CURRENT_CLASS = None
             return returned
         else:
-            args = [i.value.eval() for i in self.args if i.name is None]
-            kwargs = {i.name: i.value.eval() for i in self.args if i.name is not None}
+            args = [
+                i.value.eval(env, consts, lvl, modules, signal)
+                for i in self.args if i.name is None
+            ]
+            kwargs = {
+                i.name: i.value.eval(env, consts, lvl, modules, signal)
+                for i in self.args if i.name is not None
+            }
             if isinstance(self.name, str):
                 if self.name in BUILTIN:
                     returned = BUILTIN[self.name](*args, **kwargs)
@@ -1142,7 +1175,7 @@ class CallStmt(Stmt):
                 if val in BUILTIN:
                     returned = BUILTIN[val](*args, **kwargs)
                     return returned
-        Signal.ERROR = f"function {self.name} isn't available"
+        signal.ERROR = f"function {self.name} isn't available"
 
 
 class ReturnStmt(Stmt):
@@ -1152,9 +1185,9 @@ class ReturnStmt(Stmt):
     def __repr__(self) -> str:
         return f"ReturnStmt({self.val})"
 
-    def eval(self):
-        Signal.RETURN = True
-        Signal.RETURN_VALUE = self.val.eval()
+    def eval(self, env, consts, lvl, modules, signal):
+        signal.RETURN = True
+        signal.RETURN_VALUE = self.val.eval(env, consts, lvl, modules, signal)
 
 
 class ImportStmt(Stmt):
@@ -1162,44 +1195,45 @@ class ImportStmt(Stmt):
         self.module_name = module_name
         self.objects = objects
         self.from_import = from_import
-        print(self)
 
     def __repr__(self) -> str:
         return f"ImportStmt({self.module_name}, {self.objects}, {self.from_import})"
 
-    def eval(self):
+    def eval(self, env, consts, lvl, modules, signal):
+        current_module = signal.CURRENT_MODULE
         if self.module_name is not None:
             module_name = self.module_name + '.avo'
             if not exists(module_name) or not isfile(module_name):
-                Signal.ERROR = f"can't find module {module_name}"
+                signal.ERROR = f"can't find module {module_name}"
                 return
             statements = parser.stmt_list()(Lexer.lex_file(module_name), 0)
             if statements:
-                Signal.CREATE_BACK_LEVEL = True
-                MODULES[self.module_name] = STATEMENT_LIST_LEVEL + 1
-                statements.value.eval()
+                signal.CURRENT_MODULE = module_name
+                signal.IN_MODULE = True
+                modules[self.module_name] = lvl+1
+                statements.value.eval(env, consts, lvl, modules, signal)
         if self.from_import:
-            env = [i for i in ENV[MODULES[self.module_name]].keys()]
-            env_c = [i for i in ENV_CONSTS[MODULES[self.module_name]].keys()]
-            for k in env + env_c:
+            environment = [i for i in env[modules[self.module_name]].keys()]
+            constants = [i for i in consts[modules[self.module_name]].keys()]
+            for k in environment + constants:
                 if k not in self.objects:
-                    del ENV[MODULES[self.module_name]][k]
+                    del env[modules[self.module_name]][k]
         else:
             while len(self.objects) > 0:
                 self.module_name = self.objects.pop(0)
-                self.eval()
+                self.eval(env, consts, lvl, modules, signal)
+        signal.CURRENT_MODULE = current_module
 
 
 class EOFStmt(Stmt):
     def __repr__(self) -> str:
         return "EOFStmt()"
 
-    def eval(self):
-        global ENV, ENV_CONSTS, MODULES, STATEMENT_LIST_LEVEL
-        if Signal.IN_MAIN or not Signal.NEED_FREE:
+    def eval(self, env, consts, lvl, modules, signal):
+        if signal.IN_MAIN or not signal.NEED_FREE:
             return
-        ENV = []
-        ENV_CONSTS = []
-        MODULES = {}
-        STATEMENT_LIST_LEVEL = -1
-        Signal.refresh()
+        env.clear()
+        consts.clear()
+        modules.clear()
+        lvl.i = 0
+        signal.refresh()
