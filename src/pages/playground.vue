@@ -7,11 +7,14 @@
 
     </div>
     <div
-      class="absolute flex z-50 right-10 bottom-10 text-5xl text-gray-50 hover:text-gray-300 active:text-gray-500 cursor-pointer select-none"
+      class="transition ease-in-out hover:scale-[1.05] active:scale-[0.95]
+             absolute flex z-50 right-16 bottom-16
+             text-5xl text-gray-50 hover:text-gray-300 active:text-gray-500
+             cursor-pointer select-none"
       @click="exec()"
     >
       <span
-        class="material-symbols-outlined scale-[3]"
+        class="material-symbols-outlined scale-[5]"
       >play_circle</span>
     </div>
   </div>
