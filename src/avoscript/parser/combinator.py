@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from typing import List, Callable
 
-from src.avoscript.lexer.types import Token
-from src.avoscript.lexer.result import Result
+from ..lexer import Token
+from ..lexer.result import Result
 
 
 class Combinator:
