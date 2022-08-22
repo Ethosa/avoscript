@@ -23,7 +23,9 @@ class MyTestCase(unittest.TestCase):
 
     @staticmethod
     def test_0_stmt_list():
-        print(stmt_list()(Lexer.lex('a = 1; b = 1; c = 3;'), 0))
+        stmt = stmt_list()(Lexer.lex('let a = 1; let b = 1; let c = 3; echo("abc ${\'a\' + \'\\nb\'}")'), 0)
+        print(stmt)
+        stmt.value.eval([], [], LevelIndex(), {}, Signal())
 
     @staticmethod
     def test_1_a_expr():

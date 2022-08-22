@@ -1,4 +1,4 @@
 # -*- coding: utf-8 -*-
 from .lexer import *
 
-version = 'v0.8.1'
+version = 'v0.8.2'

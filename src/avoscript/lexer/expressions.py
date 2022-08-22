@@ -78,7 +78,7 @@ class BoolAST(ASTExpr):
 
 class StringAST(ASTExpr):
     VARIABLE = r'\$[a-zA-Z][a-zA-Z0-9_]*'
-    EXPRESSION = r'\$\{.*\}'
+    EXPRESSION = r'\$\{[\S\s]*\}'
     ESCAPE_SEQUENCE_RE = compile(
         r'(\\U........|\\u....|\\x..|\\[0-7]{1,3}|\\N\{[^}]+\}|\\[\\\'"abfnrtv])', UNICODE | VERBOSE
     )
@@ -89,24 +89,23 @@ class StringAST(ASTExpr):
     def __repr__(self) -> str:
         return f'StringAST({Fore.LIGHTGREEN_EX}"{self.s}"{Fore.RESET})'
 
-    def decode(self):
+    def decode(self, s: str = None) -> str:
         def decode_match(match):
             return decode(match.group(0), 'unicode-escape')
-
-        return StringAST.ESCAPE_SEQUENCE_RE.sub(decode_match, self.s)
+        if s is None:
+            return StringAST.ESCAPE_SEQUENCE_RE.sub(decode_match, self.s)
+        return StringAST.ESCAPE_SEQUENCE_RE.sub(decode_match, s)
 
     def eval(self, env, consts, lvl, modules, signal):
         result = self.s
-        matched = findall(StringAST.VARIABLE, result)
-        for m in matched:
+        for m in findall(StringAST.VARIABLE, result):
             result = result.replace(m, str(VarAST(m[1:]).eval(env, consts, lvl, modules, signal)))
-        matched = findall(StringAST.EXPRESSION, result)
-        for m in matched:
+        for m in findall(StringAST.EXPRESSION, result):
             result = result.replace(
                 m,
                 str(parser.expression()(Lexer.lex(m[2:-1]), 0).value.eval(env, consts, lvl, modules, signal))
             )
-        return self.decode()
+        return self.decode(result)
 
 
 class ArrayAST(ASTExpr):
