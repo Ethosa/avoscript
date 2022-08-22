@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
+from codecs import decode
 from typing import Tuple, List, Any
 from pprint import pprint
-from re import findall
+from re import findall, compile, UNICODE, VERBOSE
 
 from colorama import Fore
 
@@ -78,12 +79,21 @@ class BoolAST(ASTExpr):
 class StringAST(ASTExpr):
     VARIABLE = r'\$[a-zA-Z][a-zA-Z0-9_]*'
     EXPRESSION = r'\$\{.*\}'
+    ESCAPE_SEQUENCE_RE = compile(
+        r'(\\U........|\\u....|\\x..|\\[0-7]{1,3}|\\N\{[^}]+\}|\\[\\\'"abfnrtv])', UNICODE | VERBOSE
+    )
 
     def __init__(self, s: str):
         self.s = s
 
     def __repr__(self) -> str:
         return f'StringAST({Fore.LIGHTGREEN_EX}"{self.s}"{Fore.RESET})'
+
+    def decode(self):
+        def decode_match(match):
+            return decode(match.group(0), 'unicode-escape')
+
+        return StringAST.ESCAPE_SEQUENCE_RE.sub(decode_match, self.s)
 
     def eval(self, env, consts, lvl, modules, signal):
         result = self.s
@@ -96,7 +106,7 @@ class StringAST(ASTExpr):
                 m,
                 str(parser.expression()(Lexer.lex(m[2:-1]), 0).value.eval(env, consts, lvl, modules, signal))
             )
-        return result
+        return self.decode()
 
 
 class ArrayAST(ASTExpr):

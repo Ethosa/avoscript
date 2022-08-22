@@ -9,6 +9,7 @@ x::say();
 
 
 echo("Hello, world!");
+echo("Escaped\nString")
 
 echo("pow(3, 4) =", pow(3, 4));
 echo("deg2rad(45 degrees) =", deg2rad(45));
