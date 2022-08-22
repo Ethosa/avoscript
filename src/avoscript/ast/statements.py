@@ -8,7 +8,9 @@ from os.path import exists, isfile
 from equality import AnyBase
 from colorama import Fore
 
-from . import Lexer, default, expressions, parser
+from ..lexer import Lexer, default
+from .. import parser
+from ..ast import expressions
 
 
 class Stmt(AnyBase):
@@ -310,6 +312,8 @@ class InterfaceStmt(Stmt):
                 'env': deepcopy(env[lvl]),
                 'consts_env': deepcopy(consts[lvl]),
                 'name': self.name,
+                'parent': None,
+                'prefix': None,
             }
             lvl.dec()
             env.pop()
@@ -317,6 +321,66 @@ class InterfaceStmt(Stmt):
             signal.NO_CREATE_LEVEL = False
         else:
             signal.ERROR = f"{self.name} is assigned"
+
+
+class EnumStmt(Stmt):
+    def __init__(self, name, body):
+        self.start = 0
+        self.name = name
+        self.body = body
+
+    def __repr__(self) -> str:
+        return f"EnumStmt({self.name}, {self.body})"
+
+    def eval(self, env, consts, lvl, modules, signal):
+        has_var, level, is_const = expressions.has_variable(self.name, env, consts)
+        if not has_var:
+            signal.NO_CREATE_LEVEL = True
+            signal.ENUM_COUNTER = 0
+            env.append({})
+            consts.append({})
+            lvl.inc()
+            for stmt in self.body:
+                stmt.eval(env, consts, lvl, modules, signal)
+            env[lvl - 1][self.name] = {
+                'env': deepcopy(env[lvl]),
+                'consts_env': deepcopy(consts[lvl]),
+                'name': self.name,
+                'parent': None,
+                'prefix': None,
+            }
+            lvl.dec()
+            env.pop()
+            consts.pop()
+            signal.ENUM_COUNTER = None
+            signal.NO_CREATE_LEVEL = False
+        else:
+            signal.ERROR = f"{self.name} is assigned"
+
+
+class EnumLetStmt(Stmt):
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+
+    def __repr__(self) -> str:
+        return f"EnumLetStmt({self.name}, {self.value})"
+
+    def eval(self, env, consts, lvl, modules, signal):
+        if signal.ENUM_COUNTER is not None:
+            if self.name in consts[lvl]:
+                signal.ERROR = f"{self.name} is assigned"
+                return
+            if self.value is None:
+                consts[lvl][self.name] = signal.ENUM_COUNTER
+                signal.ENUM_COUNTER += 1
+            else:
+                val = self.value.eval(env, consts, lvl, modules, signal)
+                consts[lvl][self.name] = val
+                if isinstance(self.value, expressions.IntAST):
+                    signal.ENUM_COUNTER = val
+        else:
+            signal.ERROR = f"enum lets should be in enum statement"
 
 
 class InitClassStmt(Stmt):

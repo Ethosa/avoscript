@@ -2,9 +2,9 @@
 from functools import reduce
 from pprint import pprint
 
-from . import expressions, statements
 from .combinator import *
-from .types import Token, TokenType
+from ..ast import expressions, statements
+from ..lexer.types import Token, TokenType
 
 
 def keyword(kw: str) -> Reserved:
@@ -684,10 +684,38 @@ def try_catch_stmt():
     ) ^ process
 
 
+def assign_enum_stmt():
+    """Enum statement
+    enum CatColor {
+        BROWN
+        WHITE
+        BLACK = "Black"
+    }"""
+    def process(p):
+        (((_, name), _), lets), _ = p
+        if lets is not None:
+            body = [i.value[0] for i in lets]
+        else:
+            body = []
+        return statements.EnumStmt(name, body)
+    return (
+        keyword('enum') + id_tag + keyword('{') + Opt(Rep(enum_body() + Opt(keyword(',')))) + keyword('}')
+    ) ^ process
+
+
+def enum_body():
+    def process(p):
+        if isinstance(p, tuple):
+            return statements.EnumLetStmt(p[0][0], p[1])
+        return statements.EnumLetStmt(p, None)
+    return Alt(id_tag + operator('=') + expression(), id_tag) ^ process
+
+
 def stmt():
     return (
             assign_class_stmt() |
             assign_interface_stmt() |
+            assign_enum_stmt() |
             func_stmt() |
             call_stmt() |
             for_stmt() |

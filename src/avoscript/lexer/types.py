@@ -26,28 +26,30 @@ class Type(Enum):
 
 
 class Signal:
-    IN_CYCLE = False
-    IN_FOR_CYCLE = False
-    IN_FUNCTION = False
-    IN_CLASS = False
-    IN_TRY = False
-    IN_MAIN = False
-    IN_MODULE = False
-    CURRENT_MODULE = 'main'
-    BREAK = False
-    CONTINUE = False
-    RETURN = False
-    NO_CREATE_LEVEL = False
-    CREATE_BACK_LEVEL = False
-    BACK_LEVEL = None
-    RETURN_VALUE = None
-    ARGUMENTS = None
-    KW_ARGUMENTS = None
-    CURRENT_CLASS = None
-    ERROR = None
-    # no refresh
-    NEED_FREE = True
-    VERBOSE = False
+    def __init__(self):
+        self.IN_CYCLE = False
+        self.IN_FOR_CYCLE = False
+        self.IN_FUNCTION = False
+        self.IN_CLASS = False
+        self.IN_TRY = False
+        self.IN_MAIN = False
+        self.IN_MODULE = False
+        self.BREAK = False
+        self.CONTINUE = False
+        self.RETURN = False
+        self.NO_CREATE_LEVEL = False
+        self.CREATE_BACK_LEVEL = False
+        self.BACK_LEVEL = None
+        self.RETURN_VALUE = None
+        self.ARGUMENTS = None
+        self.KW_ARGUMENTS = None
+        self.CURRENT_CLASS = None
+        self.ERROR = None
+        self.CURRENT_MODULE = 'main'
+        self.ENUM_COUNTER = 0
+        # no refresh
+        self.NEED_FREE = True
+        self.VERBOSE = False
 
     def refresh(self):
         self.IN_CYCLE = False
@@ -69,6 +71,7 @@ class Signal:
         self.CURRENT_CLASS = None
         self.ERROR = None
         self.CURRENT_MODULE = 'main'
+        self.ENUM_COUNTER = 0
 
 
 class StdString:

@@ -1,10 +1,10 @@
 from src.avoscript.lexer import Lexer
-from src.avoscript.lexer.parser import (
+from src.avoscript.parser import (
     stmt_list, a_expr, expr, b_expr, if_stmt, while_stmt, assign_class_stmt,
     func_stmt, call_stmt, imp_parser, module_obj_expr, switch_case_stmt, assign_stmt,
-    echo_stmt
+    echo_stmt, assign_enum_stmt
 )
-from src.avoscript.lexer.combinator import Exp
+from src.avoscript.parser.combinator import Exp
 from src.avoscript.lexer.types import LevelIndex, Signal
 import unittest
 
@@ -138,6 +138,11 @@ class MyTestCase(unittest.TestCase):
         lvl = LevelIndex()
         modules = {}
         parsed.value.eval(env, consts, lvl, modules, Signal())
+
+    @staticmethod
+    def test_g_assign_enum_stmt():
+        parsed = assign_enum_stmt()(Lexer.lex('enum A {A B C D = 9}'), 0)
+        print(parsed)
 
 
 if __name__ == '__main__':

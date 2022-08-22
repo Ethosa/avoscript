@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from typing import List, Callable
 
-from .types import Token
-from .result import Result
+from src.avoscript.lexer.types import Token
+from src.avoscript.lexer.result import Result
 
 
 class Combinator:
@@ -52,36 +52,36 @@ class Tag(Combinator):
 
 
 class Concat(Combinator):
-    def __init__(self, l: Combinator, r: Combinator):
-        self.l = l
+    def __init__(self, left: Combinator, r: Combinator):
+        self.left = left
         self.r = r
 
     def __call__(self, tokens: List[Token], i: int) -> Result:
-        lres = self.l(tokens, i)
-        if lres:
-            rres = self.r(tokens, lres.pos)
-            if rres:
-                res = (lres.value, rres.value)
-                return Result(res, rres.pos)
+        l_res = self.left(tokens, i)
+        if l_res:
+            r_res = self.r(tokens, l_res.pos)
+            if r_res:
+                res = (l_res.value, r_res.value)
+                return Result(res, r_res.pos)
 
     def __repr__(self) -> str:
-        return f"Concat({self.l}, {self.r})"
+        return f"Concat({self.left}, {self.r})"
 
 
 class Alt(Combinator):
-    def __init__(self, l: Combinator, r: Combinator):
-        self.l = l
+    def __init__(self, left: Combinator, r: Combinator):
+        self.left = left
         self.r = r
 
     def __call__(self, tokens: List[Token], i: int) -> Result:
-        lres = self.l(tokens, i)
-        if lres:
-            return lres
+        l_res = self.left(tokens, i)
+        if l_res:
+            return l_res
         else:
             return self.r(tokens, i)
 
     def __repr__(self) -> str:
-        return f"Alt({self.l}, {self.r})"
+        return f"Alt({self.left}, {self.r})"
 
 
 class Opt(Combinator):

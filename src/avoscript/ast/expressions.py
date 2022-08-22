@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 from codecs import decode
 from typing import Tuple, List, Any
-from pprint import pprint
 from re import findall, compile, UNICODE, VERBOSE
 
 from colorama import Fore
 
 from equality import AnyBase
-from . import Lexer, parser, statements, default
+from src.avoscript.lexer import Lexer, default
+from .. import parser
+from src.avoscript.ast import statements
 
 
 def has_variable(name: str, env, consts) -> Tuple[bool, int, bool]:
@@ -103,7 +104,7 @@ class StringAST(ASTExpr):
         for m in findall(StringAST.EXPRESSION, result):
             result = result.replace(
                 m,
-                str(parser.expression()(Lexer.lex(m[2:-1]), 0).value.eval(env, consts, lvl, modules, signal))
+                str(parser.expr()(Lexer.lex(m[2:-1]), 0).value.eval(env, consts, lvl, modules, signal))
             )
         return self.decode(result)
 
