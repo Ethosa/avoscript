@@ -5,7 +5,10 @@ from sys import exit
 try:
     from avoscript import Lexer, imp_parser, Signal, ENV, ENV_CONSTS, LevelIndex, version
 except ImportError:
-    from src import Lexer, imp_parser, Signal, ENV, ENV_CONSTS, LevelIndex, version
+    from src.avoscript.lexer import Lexer
+    from src.avoscript.lexer.default import ENV, ENV_CONSTS, LevelIndex
+    from src.avoscript import version
+    from src.avoscript.lexer.parser import imp_parser
 
 from colorama import Fore, init
 

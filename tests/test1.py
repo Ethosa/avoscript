@@ -1,4 +1,11 @@
-from src.avoscript import *
+from src.avoscript.lexer import Lexer
+from src.avoscript.lexer.parser import (
+    stmt_list, a_expr, expr, b_expr, if_stmt, while_stmt, assign_class_stmt,
+    func_stmt, call_stmt, imp_parser, module_obj_expr, switch_case_stmt, assign_stmt,
+    echo_stmt
+)
+from src.avoscript.lexer.combinator import Exp
+from src.avoscript.lexer.types import LevelIndex, Signal
 import unittest
 
 
