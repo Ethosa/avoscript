@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from avoscript.lexer import Lexer
-from avoscript.lexer.parser import imp_parser
+from avoscript.parser import imp_parser
 from avoscript.lexer.types import Signal, StdString, LevelIndex
 from avoscript import version
 import sys
@@ -32,7 +32,6 @@ async def index(code: Code):
                 'error': 'code too large'
             }
         )
-    print(code.value)
     lexed = ''
     try:
         lexed = Lexer.lex(code.value)
