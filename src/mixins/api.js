@@ -1,4 +1,4 @@
-const API_DOMEN = "109.248.133.17:8000"
+const API_DOMEN = "localhost:8000"
 const API_URL = `http://${API_DOMEN}/`
 
 /**
@@ -27,6 +27,11 @@ async function get(url) {
 
 
 export default {
+  /**
+   * Executes code
+   * @param {String} code 
+   * @returns output
+   */
   async exec(code) {
     return await post(`${API_URL}exec`, {
       body: JSON.stringify({

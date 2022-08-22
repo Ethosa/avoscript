@@ -134,7 +134,7 @@ export default {
     this.variables && this.variables.dispose()
     this.variables = editor.create(this.$refs.variables, this.codeExampleConfig)
     this.variables.setValue([
-      'const PI = 3.14159  # float const',
+      'let PI = 3.14159  # float immutable',
       'var i = 0  # integer',
       'var s = "my string"',
       'var arr = [PI, i, s, 1, true, off]',

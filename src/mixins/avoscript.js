@@ -28,7 +28,7 @@ export default {
             { open: '{', close: '}', token: 'bracket.curly'},
         ],
         keywords: [
-            'abstract', 'class', 'interface', 'of', 'func', 'const', 'var', 'if', 'elif', 'else',
+            'abstract', 'class', 'interface', 'of', 'func', 'let', 'var', 'if', 'elif', 'else',
             'for', 'while', 'break', 'continue', 'return', 'switch', 'case', 'try', 'catch', 'import',
             'from', 'this', 'with', 'super',
         ],
@@ -76,17 +76,25 @@ export default {
             ],
             string1: [
                 [/'/, 'string', '@pop'],
+                [/\\\S/, 'operator'],
                 [/\$[a-zA-Z][a-zA-Z0-9_]*/, 'keyword'],
                 [/\$\{/, 'string.curly', '@stringCurly'],
                 [/./, 'string'],
             ],
             string2: [
                 [/"/, 'string', '@pop'],
+                [/\\\S/, 'operator'],
                 [/\$[a-zA-Z][a-zA-Z0-9_]*/, 'keyword'],
-                [/\$\{/, 'string.curly', '@stringCurly'],
+                [/\$\{/, 'string.curly', '@stringDoubleCurly'],
                 [/./, 'string'],
             ],
             stringCurly: [
+                [/"/, 'string', '@string2'],
+                [/\}/, 'string.curly', '@pop'],
+                {include: '@common'},
+            ],
+            stringDoubleCurly: [
+                [/'/, 'string', '@string1'],
                 [/\}/, 'string.curly', '@pop'],
                 {include: '@common'},
             ],
