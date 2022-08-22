@@ -26,7 +26,7 @@ for i in [1, "OK", [], 2, 3] {
     echo("foreach cycle also available ", i)
 }
 
-const MY_CONST = 100
+let MY_CONST = 100
 
 func test() {
     echo("test func")
@@ -99,7 +99,3 @@ while i < 4 {
     }
     ++i
 }
-
-echo(MY_CONST);
-MY_CONST += 10;
-echo(MY_CONST);

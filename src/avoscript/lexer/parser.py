@@ -279,12 +279,12 @@ def assign_stmt():
 
 def assign_const_stmt():
     """Assign constant statement
-    const x = y
+    let x = y
     """
     def process(p):
         ((_, name), _), e = p
         return statements.AssignStmt(name, e, True, True)
-    return (keyword('const') + id_tag + operator('=') + expression()) ^ process
+    return (keyword('let') + id_tag + operator('=') + expression()) ^ process
 
 
 def reassign_stmt():

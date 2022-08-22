@@ -1,9 +1,9 @@
 # this file uses as module
 
-const PI = 3.14159
-const HALF_PI = PI/2
-const PI3_2 = PI*0.75;
-const TAU = PI*2
+let PI = 3.14159
+let HALF_PI = PI/2
+let PI3_2 = PI*0.75;
+let TAU = PI*2
 
 class S {}
 class W : S {}

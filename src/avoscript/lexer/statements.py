@@ -141,9 +141,9 @@ class AssignStmt(Stmt):
         elif has_var:
             # Reassign
             if is_const:
-                consts[level][self.name] = val.eval(env, consts, lvl, modules, signal)
-            else:
-                env[level][self.name] = val.eval(env, consts, lvl, modules, signal)
+                signal.ERROR = f'cannot change constant {self.name}'
+                return
+            env[level][self.name] = val.eval(env, consts, lvl, modules, signal)
         elif isinstance(self.name, expressions.BraceAST):
             result = None
             obj = self.name
@@ -173,7 +173,7 @@ class AssignStmt(Stmt):
             if module.obj in env[modules[module.name]]:
                 env[modules[module.name]][module.obj] = val.eval(env, consts, lvl, modules, signal)
             elif module.obj in consts[modules[module.name]]:
-                consts[modules[module.name]][module.obj] = val.eval(env, consts, lvl, modules, signal)
+                signal.Error = f'{module.name}.{module.obj} is constant'
             else:
                 signal.ERROR = f"unknown module property {module.obj}"
                 return
@@ -200,7 +200,7 @@ class AssignStmt(Stmt):
                     if obj.prop in var['consts_env']:
                         var['consts_env'][obj.prop] = val.eval(env, consts, lvl, modules, signal)
                         return
-                signal.ERROR = f"unknown property {obj.prop} in class {obj.name}"
+                env[level][obj.name]['env'] = val.eval(env, consts, lvl, modules, signal)
             else:
                 signal.ERROR = f"unknown class {obj.name}"
         else:

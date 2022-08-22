@@ -6,7 +6,7 @@ from re import findall
 from colorama import Fore
 
 from equality import AnyBase
-from . import Lexer, parser, statements, default, types
+from . import Lexer, parser, statements, default
 
 
 def has_variable(name: str, env, consts) -> Tuple[bool, int, bool]:
