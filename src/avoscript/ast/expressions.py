@@ -6,9 +6,9 @@ from re import findall, compile, UNICODE, VERBOSE
 from colorama import Fore
 
 from equality import AnyBase
-from src.avoscript.lexer import Lexer, default
+from ..lexer import Lexer, default
 from .. import parser
-from src.avoscript.ast import statements
+from ..ast import statements
 
 
 def has_variable(name: str, env, consts) -> Tuple[bool, int, bool]:
