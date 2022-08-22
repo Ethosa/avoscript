@@ -103,12 +103,18 @@ export default {
   methods: {
     goToUrl(url) {
       window.open(url, '_blank').focus()
+    },
+    async getVersion() {
+    try {
+        const res = await API.version()
+        this.avoscriptVersion = res.response
+      } catch (e) {
+        this.avoscriptVersion = ''
+      }
     }
   },
   async mounted() {
-    const res = await API.version()
-    this.avoscriptVersion = res.response
-
+    await this.getVersion()
     if (!this.registered) {
       this.registered = true
       languages.register({'id': 'AVOScript'})
