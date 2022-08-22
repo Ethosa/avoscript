@@ -2,7 +2,7 @@ from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from avoscript import imp_parser, Lexer, StdString, LevelIndex, Signal
+from avoscript import imp_parser, Lexer, StdString, LevelIndex, Signal, version
 import sys
 
 
@@ -62,3 +62,10 @@ async def index(code: Code):
         status_code=status.HTTP_400_BAD_REQUEST,
         content={'error': 'error when code parsed'}
     )
+
+
+@app.get('/version')
+def avoscript_version():
+    return {
+        'response': version
+    }
