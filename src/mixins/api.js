@@ -1,5 +1,5 @@
-const API_DOMEN = "109.248.133.17:8000"
-const API_URL = `http://${API_DOMEN}/`
+const API_DOMEN = "avoscript.herokuapp.com"
+const API_URL = `https://${API_DOMEN}/`
 
 /**
  * Sends POST request

@@ -28,6 +28,8 @@
         <div ref="functions" class="w-full h-80 indent-0 pl-8 pb-8"></div>
         Classes
         <div ref="classes" class="w-full h-[32rem] indent-0 pl-8 pb-8"></div>
+        Enums
+        <div ref="enums" class="w-full h-72 indent-0 pl-8 pb-8"></div>
       </div>
     </div>
     <div
@@ -181,6 +183,18 @@ export default {
       '}', '',
       'var cat = Pet()',
       'echo(cat::name)', ''
+    ].join('\n'))
+
+    this.enums && this.enums.dispose()
+    this.enums = editor.create(this.$refs.enums, this.codeExampleConfig)
+    this.enums.setValue([
+      'enum Week {',
+      '  MONDAY, TUESDAY, WEDNESDAY,',
+      '  THURSDAY = "thursday", FRIDAY,',
+      '  SATURDAY, SUNDAY',
+      '}', '',
+      'echo(Week::MONDAY, Week::SUNDAY)',
+      'echo(Week::THURSDAY)', ''
     ].join('\n'))
 
   },
