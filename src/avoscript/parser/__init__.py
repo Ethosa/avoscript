@@ -52,7 +52,7 @@ def array_expr():
     def process(p):
         (_, data), _ = p
         return expressions.ArrayAST(data)
-    return keyword('[') + Opt(Rep(Lazy(expr) + Opt(keyword(',')))) + keyword(']') ^ process
+    return keyword('[') + Opt(Rep(Lazy(expression) + Opt(keyword(',')))) + keyword(']') ^ process
 
 
 def array_generator_expr():
@@ -474,7 +474,7 @@ def call_stmt():
         return statements.CallStmt(func_name, arguments)
     return (
         id_or_module() + keyword('(') +
-        Rep(Opt(id_tag + operator('=')) + expression() + Opt(keyword(','))) +
+        Rep(Opt(id_tag + operator('=')) + Lazy(expression) + Opt(keyword(','))) +
         keyword(')') + Opt(keyword('with') + keyword('{') + Opt(Lazy(stmt_list)) + keyword('}'))
     ) ^ process
 
