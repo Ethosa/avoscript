@@ -1,5 +1,7 @@
-fastapi
+fastapi~=0.75.2
 uvicorn
 colorama
 equality
-avoscript>=0.10.1
+avoscript~=0.9.2
+
+pydantic~=1.9.0

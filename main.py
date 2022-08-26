@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
 from multiprocessing import Process
-from typing import NoReturn
 
 from avoscript import version
 from avoscript.lexer import Lexer
@@ -35,7 +34,7 @@ db = DB()
 
 
 @app.post('/exec')
-async def index(code: Code):
+async def execute(code: Code):
     if len(code.value) > 1024:
         return JSONResponse(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -96,7 +95,7 @@ async def index(code: Code):
 
 
 @app.post('/save')
-def save_code(code: Code):
+async def save_code(code: Code):
     if len(code.value) > 1024:
         return JSONResponse(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -104,14 +103,14 @@ def save_code(code: Code):
                 'error': 'code too large'
             }
         )
-    db.save(code.value)
+    name = db.save(code.value)
     return {
-        'response': 'ok'
+        'response': name
     }
 
 
 @app.get('/code/{uuid}')
-def load_code(uuid: str):
+async def load_code(uuid: str):
     response = db.load(uuid)
     if response:
         save_time, code, uuid = response

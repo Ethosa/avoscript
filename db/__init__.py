@@ -1,6 +1,6 @@
 # -*- coding: utf-8- -*-
 from time import time
-from typing import NoReturn, Optional, Tuple
+from typing import Optional, Tuple
 from secrets import token_hex
 from sqlite3 import connect
 
@@ -22,22 +22,31 @@ class DB:
         )
         self.con.commit()
         self.timeout = timeout
+        self.clear()
 
     def save(
             self,
             code
-    ) -> NoReturn:
+    ) -> str:
+        self.clear()
+        uuid = token_hex(12)
         self.cur.execute(
             'INSERT INTO code (save_time, code, uuid) VALUES (?, ?, ?)',
-            (time(), code, token_hex(8))
+            (time(), code, uuid)
         )
         self.con.commit()
+        return uuid
 
     def load(
             self,
             uuid: str
     ) -> Optional[Tuple[int, str, str]]:
+        self.clear()
         return self.cur.execute('SELECT * FROM code WHERE uuid = ?', (uuid,)).fetchone()
 
     def clear(self):
-        pass
+        data = self.cur.execute('SELECT * FROM code').fetchall()
+        now = time()
+        for i in data:
+            if now - i[0] >= self.timeout:
+                self.cur.execute('DELETE FROM code WHERE save_time = ?', (i[0],))
