@@ -725,8 +725,7 @@ class CallStmt(Stmt):
                     if index > 0:
                         func = f
                         if isinstance(func, tuple):
-                            if f[3] is None:
-                                func = LambdaStmt(f[0], f[1])
+                            func = LambdaStmt(f[0], f[1])
                         else:
                             signal.ERROR = f"is not function"
                     else:

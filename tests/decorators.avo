@@ -11,6 +11,12 @@ func b(callable, value) {
     return tmp
 }
 
+func c(callable) {
+    callable("c")
+    return callable
+}
+
+@c
 @b(5)
 @a
 func function(arg) {
@@ -18,3 +24,28 @@ func function(arg) {
 }
 
 function("function")
+
+
+func decorator(callable, num) {
+	for i in range(num) {
+		callable(i)
+	}
+	return callable
+}
+
+func decorator_1(callable) {
+	callable(999)
+	return (arg) => {
+		echo(arg * 100)
+	}
+}
+
+
+@decorator(15)
+@decorator_1
+func f(arg) {
+	echo(arg)
+}
+
+f(5)
+
