@@ -53,6 +53,7 @@ export default {
                 [/(^#.*$)/, 'comment'],
             ],
             common: [
+                [/@[a-zA-Z][a-zA-Z0-9_]*/, 'function'],
                 [/[a-zA-Z][a-zA-Z0-9_]*(?=\()/, {
                     cases: {
                     '@builtin': 'builtin',
