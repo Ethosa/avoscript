@@ -9,6 +9,11 @@ const routes = [
     name: "home",
     component: home,
   }, {
+    path: "/code/:uuid",
+    name: "loadCode",
+    component: playground,
+  },
+  {
     path: "/playground",
     name: "playground",
     component: playground,

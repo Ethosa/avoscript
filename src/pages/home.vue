@@ -75,6 +75,7 @@
 import {editor, languages} from 'monaco-editor';
 import AVOScript from '../mixins/avoscript.js'
 import API from '../mixins/api.js'
+import { usePlayground } from '../mixins/store.js'
 
 export default {
   mixins: [
@@ -82,6 +83,7 @@ export default {
   ],
   data() {
     return {
+      playground: usePlayground(),
       avoscriptVersion: '',
       registered: false,
       codeExampleConfig: {
@@ -116,6 +118,7 @@ export default {
     }
   },
   async mounted() {
+    this.playground.isPlayground = false
     await this.getVersion()
     if (!this.registered) {
       this.registered = true

@@ -24,14 +24,14 @@
 import {editor, languages} from 'monaco-editor';
 import AVOScript from '../mixins/avoscript.js'
 import API from '../mixins/api.js'
+import { usePlayground } from '../mixins/store.js'
 
 export default {
   name: 'App',
-  components: {
-  },
   mixins: [AVOScript, API],
   data() {
     return {
+      playground: usePlayground(),
       registered: false,
       loaderStates: [
         'Executing \\',
@@ -153,9 +153,18 @@ export default {
           w >= 768 && w < 1023 ? 18 : 24
         )
       })
+    },
+    async loadCode() {
+      if (this.$route.params.uuid) {
+        const res = await API.load(this.$route.params.uuid)
+        if ('response' in res && this.editor) {
+          this.editor.setValue(res.response)
+        }
+      }
     }
   },
-  mounted() {
+  async mounted() {
+    this.playground.isPlayground = true
     if (!this.registered) {
       this.registered = true
       languages.register({'id': 'AVOScript'})
@@ -169,7 +178,14 @@ export default {
       this.output.dispose()
     this.editor = editor.create(this.$refs.editor, this.editorConfig)
     this.output = editor.create(this.$refs.output, this.outputConfig)
+
+    await this.loadCode()
+
     window.addEventListener("resize", this.onResize)
+    this.playground.code = this.editor.getValue()
+    this.editor.onKeyUp((_) => {
+      this.playground.code = this.editor.getValue()
+    })
   },
   beforeUnmount() {
     this.editor && this.editor.dispose()

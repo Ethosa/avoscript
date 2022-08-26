@@ -35,9 +35,19 @@ export default {
   async exec(code) {
     return await post(`${API_URL}exec`, {
       body: JSON.stringify({
-        'value': code
+        value: code
       })
     })
+  },
+  async save(code) {
+    return await post(`${API_URL}save`, {
+      body: JSON.stringify({
+        value: code
+      })
+    })
+  },
+  async load(uuid) {
+    return await get(`${API_URL}code/${uuid}`)
   },
   async version() {
     return await get(`${API_URL}version`)
