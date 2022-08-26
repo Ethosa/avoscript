@@ -48,11 +48,11 @@ flags
 
 <div align="center">
 
-| [Wiki][] | [AvailableStatements][] | [OnlineEditor][] |
-|----------|-------------------------|------------------|
+| [Wiki][] | [AvailableStatements][] | [Playground][] |
+|----------|-------------------------|----------------|
 
 </div>
 
 [Wiki]:https://github.com/Ethosa/avoscript/wiki
 [AvailableStatements]:https://github.com/Ethosa/avoscript/wiki/Available-Statements
-[OnlineEditor]:https://ethosa.github.io/avoscript
+[Playground]:https://ethosa.github.io/avoscript
