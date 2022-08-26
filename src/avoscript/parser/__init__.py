@@ -479,6 +479,26 @@ def call_stmt():
     ) ^ process
 
 
+def decorator_stmt():
+    """Decorator statement
+    @decorator
+    func main() {
+        ...
+    }
+    """
+    def process(p):
+        ((_, name), name_list), function = p
+        names = [name]
+        if name_list is not None:
+            names += [i.value[1] for i in name_list]
+        return statements.DecoratorStmt(names, function)
+    return (
+            operator('@') + Alt(Lazy(call_stmt), id_or_module()) +
+            Opt(Rep(operator('@') + Alt(Lazy(call_stmt), id_or_module()))) +
+            func_stmt()
+    ) ^ process
+
+
 def return_stmt():
     """Return statement
     return x
@@ -652,6 +672,7 @@ def init_class_stmt():
 def class_body_stmt():
     return (
         init_class_stmt() |
+        decorator_stmt() |
         func_stmt() |
         assign_stmt() |
         assign_const_stmt() |
@@ -716,6 +737,7 @@ def stmt():
             assign_class_stmt() |
             assign_interface_stmt() |
             assign_enum_stmt() |
+            decorator_stmt() |
             func_stmt() |
             call_stmt() |
             for_stmt() |

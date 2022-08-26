@@ -1,0 +1,20 @@
+func a(callable) {
+    callable("a")
+    return (arg) => {echo(arg, arg)}
+}
+
+func b(callable, value) {
+    callable(value)
+    func tmp(arg) {
+        echo(arg, arg, arg, arg)
+    }
+    return tmp
+}
+
+@b(5)
+@a
+func function(arg) {
+    echo(arg)
+}
+
+function("function")

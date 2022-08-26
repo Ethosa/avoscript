@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import math
+import pprint
 import traceback
 from typing import Union
 from copy import deepcopy
@@ -620,6 +621,7 @@ class FuncStmt(Stmt):
         self.name = name
         self.args = args
         self.body = body
+        self.decorators = None
 
     def __repr__(self) -> str:
         return f"FuncStmt({self.name}, {self.args}, {self.body})"
@@ -629,7 +631,45 @@ class FuncStmt(Stmt):
         if has_var and not is_const and level == lvl:
             signal.ERROR = f"Function {self.name} is exists"
             return
-        env[lvl][self.name] = (self.args, self.body)
+        env[lvl][self.name] = (self.args, self.body, self.decorators, self.name)
+
+
+class DecoratorStmt(Stmt):
+    def __init__(self, names, function):
+        self.names = names
+        self.function = function
+
+    def __repr__(self) -> str:
+        return f"DecoratorStmt({self.names}, {self.function})"
+
+    def eval(self, env, consts, lvl, modules, signal):
+        for name in self.names:
+            obj = None
+            if isinstance(name, str):
+                obj = expressions.VarAST(name).eval(env, consts, lvl, modules, signal)
+            elif isinstance(name, (expressions.ClassPropAST, expressions.ModuleCallAST)):
+                obj = name.eval(env, consts, lvl, modules, signal)
+            elif isinstance(name, CallStmt):
+                obj = (name.name, name.args)
+            if obj is not None:
+                if isinstance(obj, tuple):
+                    if self.function.decorators is None:
+                        self.function.decorators = [{
+                            'name': name,
+                            'func_name': self.function.name
+                        }]
+                    else:
+                        self.function.decorators.append({
+                            'name': name,
+                            'func_name': self.function.name
+                        })
+                else:
+                    signal.ERROR = f"{name} is not function"
+                    return
+            else:
+                signal.ERROR = f"{name} is not assigned"
+                return
+        self.function.eval(env, consts, lvl, modules, signal)
 
 
 class LambdaStmt(Stmt):
@@ -641,7 +681,7 @@ class LambdaStmt(Stmt):
         return f"LambdaStmt({self.args}, {self.body})"
 
     def eval(self, env, consts, lvl, modules, signal):
-        return self.args, self.body
+        return self.args, self.body, None, None
 
 
 class CallStmt(Stmt):
@@ -677,6 +717,30 @@ class CallStmt(Stmt):
             signal.IN_CLASS = True
             f = self.name.eval(env, consts, lvl, modules, signal)
         if f is not None:
+            if len(f) == 4 and f[2] is not None:
+                index = 0
+                for i in f[2][::-1]:
+                    if i['func_name'] == f[3] and f[3] != self.name:
+                        break
+                    if index > 0:
+                        func = f
+                        if isinstance(func, tuple):
+                            if f[3] is None:
+                                func = LambdaStmt(f[0], f[1])
+                        else:
+                            signal.ERROR = f"is not function"
+                    else:
+                        func = expressions.VarAST(i['func_name'])
+                    if isinstance(i['name'], CallStmt):
+                        i['name'].args.insert(0, expressions.ArgumentAST(None, func))
+                        f = i['name'].eval(env, consts, lvl, modules, signal)
+                        i['name'].args.pop(0)
+                    elif isinstance(i['name'], str):
+                        call = CallStmt(
+                            i['name'], [expressions.ArgumentAST(None, func)]
+                        )
+                        f = call.eval(env, consts, lvl, modules, signal)
+                    index += 1
             args = [i for i in self.args if i.name is None]
             fargs = [i for i in f[0] if i.value is None]
             kwargs = [i for i in self.args if i.name is not None]

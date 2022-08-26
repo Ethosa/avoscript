@@ -3,4 +3,4 @@ from . import lexer
 from . import parser
 from . import ast
 
-version = 'v0.9.3'
+version = 'v0.10.0'

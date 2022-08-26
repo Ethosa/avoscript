@@ -141,8 +141,12 @@ class MyTestCase(unittest.TestCase):
 
     @staticmethod
     def test_g_assign_enum_stmt():
-        parsed = assign_enum_stmt()(Lexer.lex('enum A {A B C D = 9}'), 0)
-        print(parsed)
+        parsed = imp_parser(Lexer.lex_file('decorators.avo'))
+        env = []
+        consts = []
+        lvl = LevelIndex()
+        modules = {}
+        parsed.value.eval(env, consts, lvl, modules, Signal())
 
 
 if __name__ == '__main__':
