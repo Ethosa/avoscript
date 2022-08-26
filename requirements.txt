@@ -2,4 +2,4 @@ fastapi
 uvicorn
 colorama
 equality
-avoscript>=0.10.0
+avoscript>=0.10.1
