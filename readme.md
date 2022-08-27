@@ -2,7 +2,7 @@
 
 # AVOScript
 
-| <br/>[![carbon (12)](https://user-images.githubusercontent.com/49402667/184539431-4cfd87eb-2631-4553-ad11-598b1dacf601.svg)](https://github.com/Ethosa/avoscript/wiki/Available-Statements) | [![carbon (11)](https://user-images.githubusercontent.com/49402667/184539434-6d32c0ff-f72f-4918-a57f-a4529e8843ab.svg)](https://github.com/Ethosa/avoscript/wiki/Available-Statements) |
+|![carbon (2)](https://user-images.githubusercontent.com/49402667/187029351-875205bf-67f7-4dac-bed7-ca2746d65ad4.png)|![carbon (1)](https://user-images.githubusercontent.com/49402667/187029349-4ee9a53e-3ad6-44f4-b2c0-be1d9cc71257.png)|
 |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 
 ### little language just for fun
