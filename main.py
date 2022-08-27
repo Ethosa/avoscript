@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
-from multiprocessing import Process
+from multiprocessing import Process, Manager
 
 from avoscript import version
 from avoscript.lexer import Lexer
@@ -33,6 +33,13 @@ app.add_middleware(
 db = DB()
 
 
+def execute_wrapper(stdout, parsed, lvl_index, signal, d):
+    sys.stdout = stdout
+    parsed.value.eval([], [], lvl_index, {}, signal)
+    sys.stdout = sys.__stdout__
+    d['out'] = stdout.out
+
+
 @app.post('/exec')
 async def execute(code: Code):
     if len(code.value) > 1024:
@@ -60,23 +67,26 @@ async def execute(code: Code):
             content={'error': f'[ERROR]: SyntaxError - {e}'}
         )
     if parsed is not None:
-        x = StdString()
-        sys.stdout = x
+        manager = Manager()
+        d = manager.dict()
+        out = ''
         try:
-            process = Process(target=parsed.value.eval, args=([], [], LevelIndex(), {}, Signal()))
+            process = Process(target=execute_wrapper, args=(StdString(), parsed, LevelIndex(), Signal(), d))
             process.start()
             process.join(5)
             if process.is_alive():
-                process.kill()
+                process.terminate()
                 return JSONResponse(
                     status_code=status.HTTP_408_REQUEST_TIMEOUT,
                     content={
                         'error': 'timeout'
                     }
                 )
+            if 'out' in d:
+                out = d['out']
         except SystemExit as e:
             sys.stdout = sys.__stdout__
-            print(x.out, e)
+            print(out, e)
         except TimeoutException as e:
             return JSONResponse(
                 status_code=status.HTTP_408_REQUEST_TIMEOUT,
@@ -86,7 +96,7 @@ async def execute(code: Code):
             )
         sys.stdout = sys.__stdout__
         return {
-            'response': x.out
+            'response': out
         }
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
