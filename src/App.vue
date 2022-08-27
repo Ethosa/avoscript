@@ -32,6 +32,28 @@
         </div>
       </div>
     </div>
+    <v-snackbar
+      v-model="saved"
+      multi-line
+      vertical
+      :timeout="2000"
+      variant="tonal"
+      color="primary"
+    >
+      <span class="text-white text-xl">
+        shared code available on
+        <a :href="sharedURL">{{ sharedURL }}</a>
+      </span>
+      <template v-slot:actions>
+        <v-btn
+          variant="tonal"
+          @click="saved = false"
+          class="text-xl text-white"
+        >
+          CLOSE
+        </v-btn>
+      </template>
+    </v-snackbar>
     <router-view class="mt-12"/>
   </div>
 </template>
@@ -46,7 +68,9 @@ export default {
   mixins: [API],
   data() {
     return {
-      playground: usePlayground()
+      playground: usePlayground(),
+      saved: false,
+      sharedURL: ''
     }
   },
   methods: {
@@ -59,7 +83,8 @@ export default {
     async saveCode() {
       const res = await API.save(this.playground.code)
       console.log(res)
-      alert(`Saved code available on https://ethosa.github.io/avoscript/#/code${res.response}`)
+      this.sharedURL = `https://ethosa.github.io/avoscript/#/code/${res.response}`
+      this.saved = true
     }
   },
   mounted() {
