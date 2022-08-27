@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import math
-import pprint
+import os
+from os import path
 import traceback
 from typing import Union
 from copy import deepcopy
@@ -12,6 +13,7 @@ from colorama import Fore
 from ..lexer import Lexer, default
 from .. import parser
 from ..ast import expressions
+from .. import STD, PKGS
 
 
 class Stmt(AnyBase):
@@ -805,6 +807,12 @@ class ReturnStmt(Stmt):
 
 
 class ImportStmt(Stmt):
+    PATHS = [
+        path.curdir,
+        STD,
+        PKGS
+    ]
+
     def __init__(self, module_name, objects, from_import):
         self.module_name = module_name
         self.objects = objects
@@ -813,13 +821,26 @@ class ImportStmt(Stmt):
     def __repr__(self) -> str:
         return f"ImportStmt({self.module_name}, {self.objects}, {self.from_import})"
 
+    @staticmethod
+    def _find(file) -> bool:
+        return exists(file) and isfile(file)
+
     def eval(self, env, consts, lvl, modules, signal):
         current_module = signal.CURRENT_MODULE
+        current_dir = os.getcwd()
         if self.module_name is not None:
-            module_name = self.module_name + '.avo'
-            if not exists(module_name) or not isfile(module_name):
-                signal.ERROR = f"can't find module {module_name}"
+            module_name = None
+            for i in self.PATHS:
+                module_name = path.join(i, self.module_name + '.avo')
+                if self._find(module_name):
+                    break
+                module_name = path.join(i, self.module_name, 'init.avo')
+                if self._find(module_name):
+                    break
+            if module_name is None:
+                signal.ERROR = f"{self.module_name} isn't exists"
                 return
+            os.chdir(path.dirname(path.abspath(module_name)))
             statements = parser.stmt_list()(Lexer.lex_file(module_name), 0)
             if statements:
                 signal.CURRENT_MODULE = module_name
@@ -837,6 +858,7 @@ class ImportStmt(Stmt):
                 self.module_name = self.objects.pop(0)
                 self.eval(env, consts, lvl, modules, signal)
         signal.CURRENT_MODULE = current_module
+        os.chdir(current_dir)
 
 
 class EOFStmt(Stmt):

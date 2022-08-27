@@ -1,6 +1,23 @@
 # -*- coding: utf-8 -*-
-from . import lexer
-from . import parser
-from . import ast
+from os import path, mkdir
+from pathlib import Path
 
-version = 'v0.10.1'
+from colorama import Fore
+
+version = 'v0.11.0'
+
+
+USER = Path.home()  # user/
+AVOSCRIPT = path.join(USER, '.avoscript')  # user/.avoscript/
+STD = path.join(AVOSCRIPT, 'std')  # user/.avoscript/std/
+PKGS = path.join(AVOSCRIPT, 'pkgs')  # user/.avoscript/pkgs/
+
+
+def create_if_not_exists(folder):
+    if not path.exists(folder):
+        print(f"{Fore.LIGHTYELLOW_EX}[INFO]:{Fore.RESET} create {Fore.LIGHTCYAN_EX}{folder}{Fore.RESET} folder")
+        mkdir(folder)
+
+
+for i in [AVOSCRIPT, STD, PKGS]:
+    create_if_not_exists(i)
