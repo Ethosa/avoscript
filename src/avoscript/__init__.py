@@ -4,7 +4,7 @@ from pathlib import Path
 
 from colorama import Fore
 
-version = 'v0.11.1'
+version = 'v0.11.2'
 
 
 USER = Path.home()  # user/

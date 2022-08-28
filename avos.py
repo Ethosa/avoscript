@@ -57,6 +57,12 @@ parser.add_argument(
     nargs='*',
     help="install package"
 )
+parser.add_argument(
+    "-nf", "--no-fetch",
+    dest="no_fetch",
+    help="no fetches package data",
+    action="store_true"
+)
 parser.set_defaults(
     script="",
     file="",
@@ -97,11 +103,10 @@ def git_show(
 ):
     """Shows file
 
-    :param file:
-    :param outfile:
-    :param directory:
-    :param target_dir:
-    :return:
+    :param file: path to file in repo
+    :param outfile: path to out file
+    :param directory: working directory
+    :param target_dir: repo folder if you need
     """
     if target_dir is not None:
         subprocess.run(
@@ -117,39 +122,51 @@ def git_show(
         )
 
 
-def fetch_pkgs() -> dict:
-    print(f"Fetch packages data ...")
-    git_clone('https://github.com/ethosa/avoscript.git', AVOSCRIPT)
-    git_show('pkgs.json', '../pkgs.json', AVOSCRIPT, './avoscript')
+def fetch_pkgs(no_fetch: bool) -> dict:
+    if not no_fetch:
+        print(f"Fetch packages data ...")
+        git_clone('https://github.com/ethosa/avoscript.git', AVOSCRIPT)
+        git_show('pkgs.json', '../pkgs.json', AVOSCRIPT, './avoscript')
+        try:
+            rmtree(path.join(AVOSCRIPT, 'avoscript'), True)
+        except PermissionError as e:
+            print(f"{Fore.LIGHTYELLOW_EX}[WARNING]:{Fore.RESET} delete error {e}")
     try:
-        rmtree(path.join(AVOSCRIPT, 'avoscript'), True)
-    except PermissionError as e:
-        print(f"{Fore.LIGHTYELLOW_EX}[WARNING]:{Fore.RESET} delete error {e}")
-    with open(path.join(AVOSCRIPT, 'pkgs.json'), 'r', encoding='utf-8') as f:
-        return loads(f.read())
+        with open(path.join(AVOSCRIPT, 'pkgs.json'), 'r', encoding='utf-8') as f:
+            return loads(f.read())
+    except FileNotFoundError as e:
+        print(f"{Fore.LIGHTRED_EX}need to fetch!{Fore.RESET}")
+        return []
 
 
 def install_package(name: str, data: List[Dict[str, str]]):
     print(f"install {Fore.LIGHTMAGENTA_EX}{name}{Fore.RESET} package ...")
     installed = False
-    name = name.replace('-', ' ')
+    _name = name.replace('-', ' ')
     for i in data:
-        if 'name' in i and i['name'] == name:
+        if 'name' in i and i['name'] == _name:
             if 'github_url' in i:
                 i['name'] = i['name'].replace(' ', '_')
                 git_clone(i['github_url'], PKGS, i['name'])
                 git_show('init.avo', 'init.avo', PKGS, i['name'])
                 git_show('readme.md', 'readme.md', PKGS, i['name'])
                 installed = True
+                print(
+                    f"{Fore.LIGHTGREEN_EX}Successfully installed{Fore.RESET} "
+                    f"{Fore.LIGHTCYAN_EX}{name}{Fore.RESET} "
+                    f"{Fore.LIGHTGREEN_EX}package{Fore.RESET} "
+                )
                 break
             else:
                 print(
-                    f"{Fore.LIGHTYELLOW_EX}[WARNING]:{Fore.RESET} package {Fore.LIGHTMAGENTA_EX}{name}{Fore.RESET} "
+                    f"{Fore.LIGHTYELLOW_EX}[WARNING]:{Fore.RESET} package "
+                    f"{Fore.LIGHTMAGENTA_EX}{name}{Fore.RESET} "
                     "hasn't github_url"
                 )
     if not installed:
         print(
-            f"{Fore.LIGHTRED_EX}[ERROR]:{Fore.RESET} package {Fore.LIGHTMAGENTA_EX}{name}{Fore.RESET} is not exists"
+            f"{Fore.LIGHTRED_EX}[ERROR]:{Fore.RESET} package "
+            f"{Fore.LIGHTMAGENTA_EX}{name}{Fore.RESET} is not exists"
         )
 
 
@@ -166,7 +183,7 @@ def main():
     if args.version:
         print(f"{Fore.LIGHTRED_EX}AVOScript{Fore.RESET} {Fore.LIGHTCYAN_EX}{version}{Fore.RESET}")
     elif args.add:
-        data = fetch_pkgs()
+        data = fetch_pkgs(args.no_fetch)
         for i in args.add[1:]:
             install_package(i, data)
     elif args.interactive:
