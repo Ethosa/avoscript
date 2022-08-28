@@ -2,8 +2,9 @@
 
 # AVOScript
 
-| ![carbon (2)](https://user-images.githubusercontent.com/49402667/187029351-875205bf-67f7-4dac-bed7-ca2746d65ad4.png) | ![carbon (1)](https://user-images.githubusercontent.com/49402667/187029349-4ee9a53e-3ad6-44f4-b2c0-be1d9cc71257.png) |
-|----------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
+| ![CodeExample][] | ![CLIExample][] |
+|:----------------:|:---------------:|
+|   Code example   |   CLI Example   |
 
 ### little language just for fun
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/avoscript?style=flat-square)](https://pypi.project/avoscript)
@@ -28,7 +29,7 @@
 ```bash
 python avos.py -h
 ```
-flags
+#### Flags
 - `-v`/`--version` AVOScript version
   ```bash
   python avos.py -v
@@ -46,6 +47,21 @@ flags
   python avos.py -f tests/test_code.avo
   ```
 
+#### Package Manager
+- install package
+  ```bash
+  python avos.py add package-name
+  ```
+- install package without packages fetching
+  ```bash
+  python avos.py add package-name -nf
+  python avos.py add package-name --no-fetch
+  ```
+- update packages data
+  ```bash
+  python avos.py upd
+  ```
+
 <div align="center">
 
 | [Wiki][] | [AvailableStatements][] | [Playground][] |
@@ -56,3 +72,6 @@ flags
 [Wiki]:https://github.com/Ethosa/avoscript/wiki
 [AvailableStatements]:https://github.com/Ethosa/avoscript/wiki/Available-Statements
 [Playground]:https://ethosa.github.io/avoscript
+
+[CodeExample]:https://user-images.githubusercontent.com/49402667/187029351-875205bf-67f7-4dac-bed7-ca2746d65ad4.png
+[CLIExample]:https://user-images.githubusercontent.com/49402667/187029349-4ee9a53e-3ad6-44f4-b2c0-be1d9cc71257.png
