@@ -1,4 +1,17 @@
 # -*- coding: utf-8 -*-
+"""
+---=== AVOScript CLI ===---
+Flags:
+    -v/--version      show AVOScript version
+    -i/--interactive  run interactive mode
+    -s/--script       run script
+    -f/--file         run script file
+    -vb/--verbose     enable verbose stdout
+Package Manager
+    add               install package
+        -nf/--no-fetch  no fetch packages data
+    upd               update packages data
+"""
 from argparse import ArgumentParser
 from json import loads
 from os import path
@@ -28,42 +41,48 @@ parser = ArgumentParser(
     description=f"{Fore.LIGHTRED_EX}AVOScript{Fore.RESET} {Fore.LIGHTCYAN_EX}{version}{Fore.RESET} interpreter",
 )
 # --== Flags ==-- #
-parser.add_argument(
+flags = parser.add_argument_group("Flags")
+flags.add_argument(
     "-i", "--interactive",
     help="start interactive mode",
     action="store_true"
 )
-parser.add_argument(
+flags.add_argument(
     "-v", "--version",
     help="show avoscript version",
     action="store_true"
 )
-parser.add_argument(
+flags.add_argument(
     "-vb", "--verbose",
     help="enables verbose mode",
     action="store_true",
 )
 # --== With args ==-- #
-parser.add_argument(
+flags.add_argument(
     "-s", "--script",
+    dest="script",
+    metavar="<src>",
     help="execute script"
 )
-parser.add_argument(
+flags.add_argument(
     "-f", "--file",
+    dest="file",
+    metavar="<file>",
     help="execute file script"
 )
-parser.add_argument(
+package_manager = parser.add_argument_group("Package Manager")
+package_manager.add_argument(
     "add",
     nargs='*',
     help="install package"
 )
-parser.add_argument(
+package_manager.add_argument(
     "-nf", "--no-fetch",
     dest="no_fetch",
-    help="no fetches package data",
+    help="disable fetching package data",
     action="store_true"
 )
-parser.add_argument(
+package_manager.add_argument(
     "upd",
     nargs="?",
     help="update packages data"
@@ -128,7 +147,12 @@ def git_show(
         )
 
 
-def fetch_pkgs(no_fetch: bool) -> dict:
+def fetch_pkgs(no_fetch: bool) -> List[Dict[str, str]]:
+    """Fetches packages data
+
+    :param no_fetch: need to fetch
+    :return: list of packages
+    """
     if not no_fetch:
         print(f"{Fore.LIGHTMAGENTA_EX}Fetch packages ...{Fore.RESET}")
         if not path.exists(path.join(AVOSCRIPT, 'avoscript')):
@@ -153,12 +177,17 @@ def fetch_pkgs(no_fetch: bool) -> dict:
         if out is not None:
             return loads(out)
         return []
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         print(f"{Fore.LIGHTRED_EX}Need to fetch!{Fore.RESET}")
         return []
 
 
 def install_package(name: str, data: List[Dict[str, str]]):
+    """Install package
+
+    :param name: package name
+    :param data: package data
+    """
     print(f"Install {Fore.LIGHTMAGENTA_EX}{name}{Fore.RESET} package ...")
     installed = False
     _name = name.replace('-', ' ')
@@ -193,20 +222,24 @@ def main():
     args = parser.parse_args()
     signal = Signal()
     signal.NEED_FREE = False
-    signal.VERBOSE = args.verbose
+    signal.VERBOSE = args.verbose  # -vb/--verbose
     env = [{}]
     consts = [{}]
     lvl = LevelIndex()
     lvl.inc()
 
+    # -v/--version flag
     if args.version:
         print(f"{Fore.LIGHTRED_EX}AVOScript{Fore.RESET} {Fore.LIGHTCYAN_EX}{version}{Fore.RESET}")
+    # upd pos arg
     elif args.upd:
         fetch_pkgs(True)
+    # add pos arg
     elif args.add:
-        data = fetch_pkgs(args.no_fetch)
+        data = fetch_pkgs(args.no_fetch)  # -nf/--no-fetch flag
         for i in args.add[1:]:
             install_package(i, data)
+    # -i/--interactive flag
     elif args.interactive:
         print(
             f"Welcome to {Fore.LIGHTRED_EX}AVOScript{Fore.RESET} "
@@ -224,8 +257,10 @@ def main():
             source = input()
         print(f"Exited via {Fore.LIGHTRED_EX}exit{Fore.RESET} command")
         exit(0)
+    # -s/--script flag
     elif args.script:
         imp_parser(Lexer.lex(args.script)).value.eval(env, consts, lvl, {}, signal)
+    # -f/--file flag
     elif args.file:
         imp_parser(Lexer.lex_file(args.file)).value.eval(env, consts, lvl, {}, signal)
 
