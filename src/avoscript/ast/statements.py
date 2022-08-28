@@ -831,6 +831,7 @@ class ImportStmt(Stmt):
         if self.module_name is not None:
             module_name = None
             for i in self.PATHS:
+                # Find module.avo or module/init.avo
                 module_name = path.join(i, self.module_name + '.avo')
                 if self._find(module_name):
                     break
@@ -840,6 +841,7 @@ class ImportStmt(Stmt):
             if module_name is None:
                 signal.ERROR = f"{self.module_name} isn't exists"
                 return
+            # Change current dir to module dir
             os.chdir(path.dirname(path.abspath(module_name)))
             statements = parser.stmt_list()(Lexer.lex_file(module_name), 0)
             if statements:

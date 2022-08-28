@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from argparse import ArgumentParser
 from json import loads
-from os import path, remove
+from os import path
+from shutil import rmtree
 from sys import exit
 import subprocess
 from typing import Dict, List, Optional
@@ -68,30 +69,60 @@ def git_clone(
         directory: str,
         target_dir: Optional[str] = None
 ):
+    """Clones repo
+
+    :param url: repo url
+    :param directory: current working directory
+    :param target_dir: dir to clone
+    """
     if target_dir is not None:
         subprocess.run(
             f'git clone --depth 1 --no-checkout --no-tags -q {url} {target_dir}',
-            shell=True,
-            cwd=directory
+            shell=True, cwd=directory, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
     else:
         subprocess.run(
             f'git clone --depth 1 --no-checkout --no-tags -q {url}',
-            shell=True,
-            cwd=directory
+            shell=True, cwd=directory, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+
+def git_show(
+        file: str,
+        outfile: str,
+        directory: str,
+        target_dir: Optional[str] = None
+):
+    """Shows file
+
+    :param file:
+    :param outfile:
+    :param directory:
+    :param target_dir:
+    :return:
+    """
+    if target_dir is not None:
+        subprocess.run(
+            f"cd {target_dir} && git show HEAD:{file} > {outfile}",
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            shell=True, cwd=directory
+        )
+    else:
+        subprocess.run(
+            f"git show HEAD:{file} > {outfile}",
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            shell=True, cwd=directory
         )
 
 
 def fetch_pkgs() -> dict:
     print(f"Fetch packages data ...")
     git_clone('https://github.com/ethosa/avoscript.git', AVOSCRIPT)
-    subprocess.run(
-        'cd ./avoscript && git show HEAD:pkgs.json > ../pkgs.json',
-        shell=True,
-        cwd=AVOSCRIPT
-    )
+    git_show('pkgs.json', '../pkgs.json', AVOSCRIPT, './avoscript')
     try:
-        remove(path.join(AVOSCRIPT, 'avoscript'))
+        rmtree(path.join(AVOSCRIPT, 'avoscript'), True)
     except PermissionError as e:
         print(f"{Fore.LIGHTYELLOW_EX}[WARNING]:{Fore.RESET} delete error {e}")
     with open(path.join(AVOSCRIPT, 'pkgs.json'), 'r', encoding='utf-8') as f:
@@ -101,16 +132,14 @@ def fetch_pkgs() -> dict:
 def install_package(name: str, data: List[Dict[str, str]]):
     print(f"install {Fore.LIGHTMAGENTA_EX}{name}{Fore.RESET} package ...")
     installed = False
+    name = name.replace('-', ' ')
     for i in data:
         if 'name' in i and i['name'] == name:
             if 'github_url' in i:
                 i['name'] = i['name'].replace(' ', '_')
                 git_clone(i['github_url'], PKGS, i['name'])
-                subprocess.run(
-                    f'cd {i["name"]} && git show HEAD:init.avo > init.avo',
-                    shell=True,
-                    cwd=PKGS
-                )
+                git_show('init.avo', 'init.avo', PKGS, i['name'])
+                git_show('readme.md', 'readme.md', PKGS, i['name'])
                 installed = True
                 break
             else:
