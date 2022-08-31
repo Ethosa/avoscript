@@ -13,9 +13,8 @@ Package Manager
     upd               update packages data
 """
 from argparse import ArgumentParser
-from json import loads
+from json import loads, dumps
 from os import path
-from shutil import rmtree
 from sys import exit
 import subprocess
 from typing import Dict, List, Optional
@@ -53,7 +52,7 @@ flags.add_argument(
     action="store_true"
 )
 flags.add_argument(
-    "-vb", "--verbose",
+    "-V", "--verbose",
     help="enables verbose mode",
     action="store_true",
 )
@@ -72,26 +71,30 @@ flags.add_argument(
 )
 package_manager = parser.add_argument_group("Package Manager")
 package_manager.add_argument(
-    "add",
-    nargs='*',
-    help="install package"
-)
-package_manager.add_argument(
     "-nf", "--no-fetch",
     dest="no_fetch",
     help="disable fetching package data",
-    action="store_true"
+    action="store_false"
 )
 package_manager.add_argument(
-    "upd",
-    nargs="?",
+    "--upd",
+    action="store_true",
     help="update packages data"
+)
+package_manager.add_argument(
+    "--upload",
+    action="store_true",
+    help="upload current project"
+)
+package_manager.add_argument(
+    "add",
+    nargs='*',
+    help="install package"
 )
 parser.set_defaults(
     script="",
     file="",
     add=None,
-    upd=None
 )
 
 
@@ -108,49 +111,23 @@ def git_clone(
     """
     if target_dir is not None:
         subprocess.run(
-            f'git clone --depth 1 --no-checkout --no-tags -q {url} {target_dir}',
+            f'git clone --depth 1 --no-tags -q {url} {target_dir}',
             shell=True, cwd=directory, stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
     else:
         subprocess.run(
-            f'git clone --depth 1 --no-checkout --no-tags -q {url}',
+            f'git clone --depth 1 --no-tags -q {url}',
             shell=True, cwd=directory, stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
 
 
-def git_show(
-        file: str,
-        outfile: str,
-        directory: str,
-        target_dir: Optional[str] = None
-):
-    """Shows file
-
-    :param file: path to file in repo
-    :param outfile: path to out file
-    :param directory: working directory
-    :param target_dir: repo folder if you need
-    """
-    if target_dir is not None:
-        subprocess.run(
-            f"cd {target_dir} && git show HEAD:{file} > {outfile}",
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            shell=True, cwd=directory
-        )
-    else:
-        subprocess.run(
-            f"git show HEAD:{file} > {outfile}",
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            shell=True, cwd=directory
-        )
-
-
-def fetch_pkgs(no_fetch: bool) -> List[Dict[str, str]]:
+def fetch_pkgs(no_fetch: bool, out_file: str = 'pkgs.json') -> List[Dict[str, str]]:
     """Fetches packages data
 
     :param no_fetch: need to fetch
+    :param out_file: output file
     :return: list of packages
     """
     if not no_fetch:
@@ -158,21 +135,16 @@ def fetch_pkgs(no_fetch: bool) -> List[Dict[str, str]]:
         if not path.exists(path.join(AVOSCRIPT, 'avoscript')):
             print(f"{Fore.LIGHTMAGENTA_EX}Cloning repo ...{Fore.RESET}")
             git_clone('https://github.com/ethosa/avoscript.git', AVOSCRIPT)
-            git_show('pkgs.json', '../pkgs.json', AVOSCRIPT, './avoscript')
         else:
             subprocess.run(
                 'cd avoscript && git init -q && git remote add origin https://github.com/ethosa/avoscript.git && '
                 'git fetch -q origin master --depth 1 --no-tags && git checkout -q origin/master -- pkgs.json && '
-                'git show origin/master:pkgs.json > ../pkgs.json',
+                f'git show origin/master:pkgs.json > {out_file}',
                 cwd=AVOSCRIPT, shell=True
             )
-        try:
-            rmtree(path.join(AVOSCRIPT, 'avoscript'), True)
-        except PermissionError as e:
-            print(f"{Fore.LIGHTYELLOW_EX}[WARNING]:{Fore.RESET} delete error {e}")
     try:
         out = None
-        with open(path.join(AVOSCRIPT, 'pkgs.json'), 'r', encoding='utf-8') as f:
+        with open(path.join(AVOSCRIPT, 'avoscript', out_file), 'r', encoding='utf-8') as f:
             out = f.read()
         if out is not None:
             return loads(out)
@@ -197,8 +169,6 @@ def install_package(name: str, data: List[Dict[str, str]]):
                 print(f"Found {Fore.LIGHTMAGENTA_EX}Github URL{Fore.RESET}, cloning ...")
                 i['name'] = i['name'].replace(' ', '_')
                 git_clone(i['github_url'], PKGS, i['name'])
-                git_show('init.avo', 'init.avo', PKGS, i['name'])
-                git_show('readme.md', 'readme.md', PKGS, i['name'])
                 installed = True
                 print(
                     f"{Fore.LIGHTGREEN_EX}Successfully installed{Fore.RESET} "
@@ -222,7 +192,7 @@ def main():
     args = parser.parse_args()
     signal = Signal()
     signal.NEED_FREE = False
-    signal.VERBOSE = args.verbose  # -vb/--verbose
+    signal.VERBOSE = args.verbose  # -V/--verbose
     env = [{}]
     consts = [{}]
     lvl = LevelIndex()
@@ -231,14 +201,42 @@ def main():
     # -v/--version flag
     if args.version:
         print(f"{Fore.LIGHTRED_EX}AVOScript{Fore.RESET} {Fore.LIGHTCYAN_EX}{version}{Fore.RESET}")
-    # upd pos arg
+    # --upload flag
+    elif args.upload:
+        print(f"{Fore.LIGHTYELLOW_EX}Working via Github CLI (gh){Fore.RESET}")
+        package_name = input(f"{Fore.LIGHTCYAN_EX}name of package: {Fore.RESET}")
+        package_description = input(f"{Fore.LIGHTCYAN_EX}package description: {Fore.RESET}")
+        github_url = input(f"{Fore.LIGHTCYAN_EX}project Github URL: {Fore.RESET}")
+        if not package_name:
+            print(f"{Fore.LIGHTRED_EX}[ERROR]:{Fore.RESET} package name is empty")
+            return
+        fetch_pkgs(False)
+        subprocess.run(
+            f'cd avoscript && git pull -q --no-tags && git checkout -b {package_name}',
+            cwd=AVOSCRIPT, shell=True,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        data = []
+        with open(path.join(AVOSCRIPT, 'avoscript', 'pkgs.json'), 'r') as f:
+            data = loads(f.read())
+        data.append({
+            'name': package_name.replace('-', ' '),
+            'description': package_description,
+            'github_url': github_url
+        })
+        with open(path.join(AVOSCRIPT, 'avoscript', 'pkgs.json'), 'w') as f:
+            f.write(dumps(data, indent=2))
+        subprocess.run(
+            f'cd avoscript && '
+            f'git add pkgs.json && git commit -q -m "add `{package_name}` package" && '
+            f'gh pr create -t "Add `{package_name}` package" -B master -b "{package_description}" -l "new package" && '
+            f'git switch master && git branch -D {package_name}',
+            cwd=AVOSCRIPT, shell=True
+        )
+        print(f"{Fore.GREEN}PR was created{Fore.RESET}")
+    # --upd flag
     elif args.upd:
-        fetch_pkgs(True)
-    # add pos arg
-    elif args.add:
-        data = fetch_pkgs(args.no_fetch)  # -nf/--no-fetch flag
-        for i in args.add[1:]:
-            install_package(i, data)
+        fetch_pkgs(False)
     # -i/--interactive flag
     elif args.interactive:
         print(
@@ -263,6 +261,11 @@ def main():
     # -f/--file flag
     elif args.file:
         imp_parser(Lexer.lex_file(args.file)).value.eval(env, consts, lvl, {}, signal)
+    # add pos arg
+    elif args.add:
+        data = fetch_pkgs(args.no_fetch)  # -nf/--no-fetch flag
+        for i in args.add[1:]:
+            install_package(i, data)
 
 
 if __name__ == '__main__':

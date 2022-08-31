@@ -13,8 +13,6 @@ for x in arr {
 	x()
 }
 
-
-
 echo("Hello, world!");
 echo("Escaped\nString")
 
