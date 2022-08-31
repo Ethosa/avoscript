@@ -59,7 +59,11 @@ python avos.py -h
   ```
 - update packages data
   ```bash
-  python avos.py upd
+  python avos.py --upd
+  ```
+- upload your package
+  ```bash
+  python avos.py --upload
   ```
 
 <div align="center">
