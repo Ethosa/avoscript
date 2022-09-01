@@ -6,26 +6,32 @@
              desktop:text-2xl tablet:text-xl mobile:text-lg
              bg-[#18171f] shadow-md flex flex-row justify-start items-center px-5"
     >
-      <div class="flex w-4/5">
+      <div class="flex w-3/4">
         <div
           class="desktop:text-3xl tablet:text-2xl mobile:text-xl font-bold
-               text-gray-50 hover:text-gray-400active:text-gray-600
-               select-none cursor-pointer"
+               text-gray-50 hover:text-gray-400 active:text-gray-600
+               select-none cursor-pointer transition-all"
         @click="mainPage()"
         >
           AVOScript
         </div>
       </div>
-      <div class="flex w-1/5 justify-around">
+      <div class="flex w-1/4 justify-around">
         <div
-          class="text-gray-50 hover:text-gray-400 active:text-gray-600 select-none cursor-pointer"
+          class="text-gray-50 hover:text-gray-400 active:text-gray-600 select-none cursor-pointer transition-all"
+          @click="packagesPage()"
+        >
+          PACKAGES
+        </div>
+        <div
+          class="text-gray-50 hover:text-gray-400 active:text-gray-600 select-none cursor-pointer transition-all"
           @click="playgroundPage()"
         >
           PLAYGROUND
         </div>
         <div
-          v-if="playground.isPlayground"
-          class="text-gray-50 hover:text-gray-400 active:text-gray-600 select-none cursor-pointer"
+          v-show="playground.isPlayground"
+          class="text-gray-50 hover:text-gray-400 active:text-gray-600 select-none cursor-pointer transition-all"
           @click="saveCode()"
         >
           SHARE
@@ -60,8 +66,8 @@
 
 
 <script>
-import { usePlayground } from './mixins/store.js'
-import API from './mixins/api.js'
+import { usePlayground } from '@/store'
+import API from '@/mixins/api'
 
 export default {
   name: 'App',
@@ -75,10 +81,15 @@ export default {
   },
   methods: {
     mainPage() {
+      this.playground.isPLayground = false
       this.$router.push("/")
     },
     playgroundPage() {
       this.$router.push("/playground")
+    },
+    packagesPage() {
+      this.playground.isPLayground = false
+      this.$router.push("/packages")
     },
     async saveCode() {
       const res = await API.save(this.playground.code)

@@ -22,9 +22,9 @@
 
 <script>
 import {editor, languages} from 'monaco-editor';
-import AVOScript from '../mixins/avoscript.js'
-import API from '../mixins/api.js'
-import { usePlayground } from '../mixins/store.js'
+import AVOScript from '@/mixins/avoscript'
+import API from '@/mixins/api'
+import { usePlayground } from '@/store'
 
 export default {
   name: 'App',
@@ -188,6 +188,7 @@ export default {
     })
   },
   beforeUnmount() {
+    this.playground.isPlayground = false
     this.editor && this.editor.dispose()
     this.output && this.output.dispose()
     window.removeEventListener("resize", this.onResize)

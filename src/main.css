@@ -1,3 +1,31 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+h1 {
+  @apply text-7xl;
+  @apply pb-2;
+  @apply w-full;
+  @apply font-bold;
+  border-bottom-width: 1px;
+  border-style: groove;
+}
+h2 {
+  @apply text-5xl;
+  @apply w-full;
+  @apply pb-2;
+  border-bottom-width: 1px;
+  border-style: groove;
+}
+h3 {
+  @apply text-3xl;
+}
+h4 {
+  @apply text-xl;
+}
+h5 {
+  @apply text-lg;
+}
+a {
+  @apply text-blue-600 underline;
+}
