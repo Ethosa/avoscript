@@ -205,19 +205,4 @@ export default {
 </script>
 
 <style>
-.scrollbar::-webkit-scrollbar {
-  width: 1rem;
-}
-
-.scrollbar::-webkit-scrollbar-track {
-  background: #24232b;
-}
-
-.scrollbar::-webkit-scrollbar-thumb {
-  background: #34333b;
-}
-
-.scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #54535b;
-}
 </style>

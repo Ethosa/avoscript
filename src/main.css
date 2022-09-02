@@ -4,7 +4,8 @@
 
 h1 {
   @apply text-7xl;
-  @apply pb-2;
+  @apply pb-3;
+  @apply mb-4;
   @apply w-full;
   @apply font-bold;
   border-bottom-width: 1px;
@@ -14,6 +15,7 @@ h2 {
   @apply text-5xl;
   @apply w-full;
   @apply pb-2;
+  @apply mb-2;
   border-bottom-width: 1px;
   border-style: groove;
 }
@@ -26,6 +28,73 @@ h4 {
 h5 {
   @apply text-lg;
 }
+
 a {
-  @apply text-blue-600 underline;
+  @apply underline;
+  @apply text-sky-400
+}
+
+code, pre {
+  @apply rounded-xl;
+  @apply px-2;
+  @apply bg-[#27262d]
+}
+
+code::selection,
+.hljs::selection {
+  @apply !bg-[#47464d]
+}
+
+.hljs {
+  @apply !bg-[#27262d];
+  @apply !text-white;
+}
+
+.hljs-string {
+  @apply !text-green-300;
+}
+
+.hljs-number {
+  @apply !text-orange-300;
+}
+
+.hljs-title {
+  @apply !text-gray-300;
+}
+
+.hljs-built_in {
+  @apply !text-cyan-200;
+}
+
+.hljs-keyword {
+  @apply !text-red-500;
+}
+
+.hljs-function > .hljs-keyword {
+  @apply !text-sky-300;
+  @apply !font-light
+}
+
+.hljs-params {
+  @apply !text-slate-300;
+}
+
+.hljs-comment {
+  @apply !text-gray-500;
+}
+
+.scrollbar::-webkit-scrollbar {
+  width: 1rem;
+}
+
+.scrollbar::-webkit-scrollbar-track {
+  background: #24232b;
+}
+
+.scrollbar::-webkit-scrollbar-thumb {
+  background: #34333b;
+}
+
+.scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #54535b;
 }

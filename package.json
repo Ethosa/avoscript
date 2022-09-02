@@ -11,6 +11,7 @@
     "@mdi/font": "5.9.55",
     "core-js": "^3.8.3",
     "dompurify": "^2.4.0",
+    "highlight.js": "^11.6.0",
     "marked": "^4.1.0",
     "monaco-editor": "^0.34.0",
     "pinia": "^2.0.21",
